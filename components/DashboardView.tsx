@@ -21,37 +21,40 @@ type DashboardViewProps = {
 };
 
 export default function DashboardView({ mode, token, view = 'map' }: DashboardViewProps) {
-  const [data, setData] = useState<ClientStatusResponse | null>(null);
+  const [data, setData] = useState<ClientStatusResponse | null>(() => (isStaticDemo ? getStaticStatus(token) : null));
   const [filter, setFilter] = useState<DashboardFilter>('all');
   const [selectedBoothNo, setSelectedBoothNo] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isStaticDemo);
 
   const loadStatus = useCallback(async () => {
-    if (isStaticDemo) {
-      setData(getStaticStatus(token));
+    try {
+      if (isStaticDemo) {
+        setData(getStaticStatus(token));
+        setError(null);
+        return;
+      }
+
+      const params = new URLSearchParams();
+      if (token) params.set('t', token);
+
+      const response = await fetch(`${appPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
+        cache: 'no-store'
+      });
+
+      if (!response.ok) {
+        setError('상황을 불러오지 못했습니다.');
+        return;
+      }
+
+      const next = (await response.json()) as ClientStatusResponse;
+      setData(next);
       setError(null);
+    } catch {
+      setError('상황을 불러오지 못했습니다. 네트워크 상태를 확인해주세요.');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const params = new URLSearchParams();
-    if (token) params.set('t', token);
-
-    const response = await fetch(`${appPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
-      cache: 'no-store'
-    });
-
-    if (!response.ok) {
-      setError('상황을 불러오지 못했습니다.');
-      setLoading(false);
-      return;
-    }
-
-    const next = (await response.json()) as ClientStatusResponse;
-    setData(next);
-    setError(null);
-    setLoading(false);
   }, [token]);
 
   useEffect(() => {
@@ -111,10 +114,9 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
   return (
     <div className="min-h-screen text-slate-950">
       <AppHeader
-        title={isMapView ? '현장 지도' : mode === 'hq' ? '전체 상황 관리' : '전체 상황'}
+        title={isMapView ? '운영 상황' : mode === 'hq' ? '전체 상황 관리' : '전체 상황'}
         lastRefresh={data?.refreshedAt}
         onRefresh={() => void loadStatus()}
-        rightLabel={data?.mode === 'demo' ? '데모' : undefined}
       />
 
       <main
@@ -137,7 +139,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                 href={appPath('/hq?t=demo-hq')}
                 className="mt-4 flex min-h-12 items-center justify-center rounded-lg bg-slate-900 text-base font-black text-white"
               >
-                데모 HQ 열기
+                HQ 화면 열기
               </a>
             ) : null}
           </section>
@@ -192,7 +194,6 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                 congestedCount={congestedCount}
                 totalCount={data.booths.length}
                 lastRefresh={data.refreshedAt}
-                isDemo={data.mode === 'demo'}
                 helpHref={canEdit ? appPath(`/help${token ? `?t=${encodeURIComponent(token)}` : ''}`) : undefined}
               />
               <SummaryCards booths={data.booths} />
@@ -315,7 +316,6 @@ function CommandBrief({
   congestedCount,
   totalCount,
   lastRefresh,
-  isDemo,
   helpHref
 }: {
   mode: 'public' | 'hq';
@@ -325,7 +325,6 @@ function CommandBrief({
   congestedCount: number;
   totalCount: number;
   lastRefresh?: string;
-  isDemo: boolean;
   helpHref?: string;
 }) {
   const attentionText =
@@ -369,7 +368,7 @@ function CommandBrief({
         <div className="relative mt-5 grid gap-2 sm:grid-cols-3">
           <StatusStrip label="현재 판단" value={attentionText} danger={problemCount > 0} />
           <StatusStrip label="권한" value={canEdit ? 'HQ 수정 가능' : mode === 'hq' ? '토큰 확인 필요' : '읽기 전용'} />
-          <StatusStrip label="갱신" value={`${formatTime(lastRefresh)} · 2초 주기${isDemo ? ' · 데모' : ''}`} />
+          <StatusStrip label="갱신" value={`${formatTime(lastRefresh)} · 2초 주기`} />
         </div>
       </div>
     </section>

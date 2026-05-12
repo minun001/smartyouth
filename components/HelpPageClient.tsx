@@ -14,27 +14,31 @@ type HelpPageClientProps = {
 };
 
 export default function HelpPageClient({ token }: HelpPageClientProps) {
-  const [data, setData] = useState<ClientStatusResponse | null>(null);
+  const [data, setData] = useState<ClientStatusResponse | null>(() => (isStaticDemo ? getStaticStatus(token) : null));
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
-    if (isStaticDemo) {
-      setData(getStaticStatus(token));
+    try {
+      if (isStaticDemo) {
+        setData(getStaticStatus(token));
+        setError(null);
+        return;
+      }
+
+      const params = new URLSearchParams();
+      if (token) params.set('t', token);
+      const response = await fetch(`${appPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, { cache: 'no-store' });
+      if (!response.ok) {
+        setError('도움 요청을 불러오지 못했습니다.');
+        return;
+      }
+
+      setData((await response.json()) as ClientStatusResponse);
       setError(null);
-      return;
+    } catch {
+      setError('도움 요청을 불러오지 못했습니다. 네트워크 상태를 확인해주세요.');
     }
-
-    const params = new URLSearchParams();
-    if (token) params.set('t', token);
-    const response = await fetch(`${appPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, { cache: 'no-store' });
-    if (!response.ok) {
-      setError('도움 요청을 불러오지 못했습니다.');
-      return;
-    }
-
-    setData((await response.json()) as ClientStatusResponse);
-    setError(null);
   }, [token]);
 
   useEffect(() => {

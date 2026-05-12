@@ -18,28 +18,34 @@ type BoothPageClientProps = {
 export default function BoothPageClient({ boothNo, token }: BoothPageClientProps) {
   const searchParams = useSearchParams();
   const activeToken = token ?? searchParams.get('t') ?? undefined;
-  const [data, setData] = useState<ClientStatusResponse | null>(null);
+  const [data, setData] = useState<ClientStatusResponse | null>(() =>
+    isStaticDemo ? getStaticStatus(activeToken, boothNo) : null
+  );
   const [error, setError] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
-    if (isStaticDemo) {
-      setData(getStaticStatus(activeToken, boothNo));
+    try {
+      if (isStaticDemo) {
+        setData(getStaticStatus(activeToken, boothNo));
+        setError(null);
+        return;
+      }
+
+      const params = new URLSearchParams({ boothNo: String(boothNo) });
+      if (activeToken) params.set('t', activeToken);
+
+      const response = await fetch(`${appPath('/api/status')}?${params.toString()}`, { cache: 'no-store' });
+      if (!response.ok) {
+        setError('부스 상태를 불러오지 못했습니다.');
+        return;
+      }
+
+      const next = (await response.json()) as ClientStatusResponse;
+      setData(next);
       setError(null);
-      return;
+    } catch {
+      setError('부스 상태를 불러오지 못했습니다. 네트워크 상태를 확인해주세요.');
     }
-
-    const params = new URLSearchParams({ boothNo: String(boothNo) });
-    if (activeToken) params.set('t', activeToken);
-
-    const response = await fetch(`${appPath('/api/status')}?${params.toString()}`, { cache: 'no-store' });
-    if (!response.ok) {
-      setError('부스 상태를 불러오지 못했습니다.');
-      return;
-    }
-
-    const next = (await response.json()) as ClientStatusResponse;
-    setData(next);
-    setError(null);
   }, [boothNo, activeToken]);
 
   useEffect(() => {
@@ -66,7 +72,6 @@ export default function BoothPageClient({ boothNo, token }: BoothPageClientProps
         title={booth ? `부스 ${booth.boothNo} 운영 패널` : '부스 운영 패널'}
         lastRefresh={data?.refreshedAt}
         onRefresh={() => void loadStatus()}
-        rightLabel={data?.mode === 'demo' ? '데모' : undefined}
       />
 
       <main className="safe-bottom mx-auto max-w-3xl space-y-4 px-4 py-4 sm:py-5">

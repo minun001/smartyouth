@@ -9,23 +9,27 @@ import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
 import { getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
 
 export default function MapPageClient() {
-  const [data, setData] = useState<ClientStatusResponse | null>(null);
+  const [data, setData] = useState<ClientStatusResponse | null>(() => (isStaticDemo ? getStaticStatus() : null));
   const [error, setError] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
-    if (isStaticDemo) {
-      setData(getStaticStatus());
-      setError(null);
-      return;
-    }
+    try {
+      if (isStaticDemo) {
+        setData(getStaticStatus());
+        setError(null);
+        return;
+      }
 
-    const response = await fetch(appPath('/api/status'), { cache: 'no-store' });
-    if (!response.ok) {
-      setError('지도 정보를 불러오지 못했습니다.');
-      return;
+      const response = await fetch(appPath('/api/status'), { cache: 'no-store' });
+      if (!response.ok) {
+        setError('지도 정보를 불러오지 못했습니다.');
+        return;
+      }
+      setData((await response.json()) as ClientStatusResponse);
+      setError(null);
+    } catch {
+      setError('지도 정보를 불러오지 못했습니다. 네트워크 상태를 확인해주세요.');
     }
-    setData((await response.json()) as ClientStatusResponse);
-    setError(null);
   }, []);
 
   useEffect(() => {
@@ -36,7 +40,7 @@ export default function MapPageClient() {
 
   return (
     <div className="min-h-screen text-slate-950">
-      <AppHeader title="현장 지도" lastRefresh={data?.refreshedAt} onRefresh={() => void loadStatus()} />
+      <AppHeader title="운영 상황" lastRefresh={data?.refreshedAt} onRefresh={() => void loadStatus()} />
       <main className="h-[calc(100dvh-76px)] overflow-hidden bg-slate-100">
         {error ? <div className="m-4 rounded-lg bg-red-50 p-4 text-sm font-black text-red-700">{error}</div> : null}
         {data ? (
