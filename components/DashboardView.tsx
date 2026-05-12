@@ -213,6 +213,9 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
         title={isMapView ? '운영 상황' : mode === 'hq' ? '전체 상황 관리' : '전체 상황'}
         lastRefresh={data?.refreshedAt}
         onRefresh={() => void loadStatus()}
+        onResetAll={canEdit ? () => void resetAllOperations() : undefined}
+        resetDisabled={!canEdit || resetSaving || Boolean(bulkSaving)}
+        resetLoading={resetSaving}
       />
 
       <main

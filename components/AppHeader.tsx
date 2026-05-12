@@ -8,10 +8,21 @@ type AppHeaderProps = {
   title?: string;
   lastRefresh?: string;
   onRefresh?: () => void;
+  onResetAll?: () => void;
+  resetDisabled?: boolean;
+  resetLoading?: boolean;
   rightLabel?: string;
 };
 
-export default function AppHeader({ title, lastRefresh, onRefresh, rightLabel }: AppHeaderProps) {
+export default function AppHeader({
+  title,
+  lastRefresh,
+  onRefresh,
+  onResetAll,
+  resetDisabled,
+  resetLoading,
+  rightLabel
+}: AppHeaderProps) {
   const [now, setNow] = useState<string | null>(null);
   const timeText = lastRefresh ? `마지막 새로고침 ${formatTime(lastRefresh)}` : `현재 ${now ? formatTime(now) : '--:--'}`;
 
@@ -39,17 +50,29 @@ export default function AppHeader({ title, lastRefresh, onRefresh, rightLabel }:
             </div>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
           {rightLabel ? (
             <span className="hidden rounded-md bg-[var(--asan-yellow)] px-3 py-2 text-xs font-black text-slate-950 sm:inline-flex">
               {rightLabel}
             </span>
           ) : null}
+          {onResetAll ? (
+            <button
+              type="button"
+              data-header-reset-all="true"
+              onClick={onResetAll}
+              disabled={resetDisabled}
+              className="min-h-10 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-black text-red-700 shadow-sm active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-11 sm:px-4 sm:text-sm"
+            >
+              {resetLoading ? '초기화 중' : '전체 초기화'}
+            </button>
+          ) : null}
           {onRefresh ? (
             <button
               type="button"
+              data-header-refresh="true"
               onClick={onRefresh}
-              className="min-h-11 rounded-lg bg-gradient-to-r from-[var(--asan-blue)] to-[var(--asan-sky)] px-3 text-sm font-black text-white active:scale-[0.98] sm:px-4"
+              className="min-h-10 rounded-lg bg-gradient-to-r from-[var(--asan-blue)] to-[var(--asan-sky)] px-3 text-xs font-black text-white active:scale-[0.98] sm:min-h-11 sm:px-4 sm:text-sm"
             >
               새로고침
             </button>
