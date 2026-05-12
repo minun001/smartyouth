@@ -7,9 +7,7 @@ import { formatTime } from '@/lib/statusLabels';
 import type { BoothStatus, BoothWithStatus, HelpType, StatusPatch } from '@/lib/types';
 import CongestionSlider from './CongestionSlider';
 import HelpRequestButtons from './HelpRequestButtons';
-import MaterialButtons from './MaterialButtons';
 import StatusSegmentedControl from './StatusSegmentedControl';
-import WaitTimeButtons from './WaitTimeButtons';
 
 type BoothControlPanelProps = {
   booth: BoothWithStatus;
@@ -194,22 +192,6 @@ export default function BoothControlPanel({
               value={status.congestionLevel}
               disabled={!canEdit}
               onChange={(congestionLevel) => void patchStatus({ congestionLevel })}
-            />
-          </ControlBlock>
-
-          <ControlBlock title="대기 시간">
-            <WaitTimeButtons
-              value={status.waitMinutes}
-              disabled={!canEdit}
-              onChange={(waitMinutes) => void patchStatus({ waitMinutes })}
-            />
-          </ControlBlock>
-
-          <ControlBlock title="재료 상태">
-            <MaterialButtons
-              value={status.materialStatus}
-              disabled={!canEdit}
-              onChange={(materialStatus) => void patchStatus({ materialStatus })}
             />
           </ControlBlock>
 

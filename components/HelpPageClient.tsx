@@ -287,7 +287,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                                 : 'bg-sky-50 text-[var(--brand-strong)]'
                             }`}
                           >
-                            {incident.status === 'NEW' ? '대기' : '처리 중'}
+                            {incident.status === 'NEW' ? '접수' : '처리 중'}
                           </span>
                           <span>요청 {formatTime(incident.createdAt)}</span>
                         </div>

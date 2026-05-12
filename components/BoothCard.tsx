@@ -7,7 +7,6 @@ import {
   congestionLabels,
   congestionSoftColors,
   formatRelativeUpdatedAt,
-  materialStatusLabels,
   operationStatusLabels
 } from '@/lib/statusLabels';
 import type { BoothWithStatus } from '@/lib/types';
@@ -98,20 +97,12 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
             ) : null}
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-2">
             <StatusPill label="상태" value={operationStatusLabels[status.operationStatus]} />
             <StatusPill
               label="혼잡"
               value={congestionLabels[status.congestionLevel]}
               color={congestionColors[status.congestionLevel]}
-            />
-            <StatusPill label="대기" value={status.waitMinutes === 30 ? '30분+' : `${status.waitMinutes}분`} />
-            <StatusPill
-              label="재료"
-              value={materialStatusLabels[status.materialStatus]}
-              color={
-                status.materialStatus === 'OUT' ? '#ef4444' : status.materialStatus === 'LOW' ? '#f97316' : '#22c55e'
-              }
             />
           </div>
 

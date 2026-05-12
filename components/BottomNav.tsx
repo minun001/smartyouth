@@ -27,7 +27,7 @@ export default function BottomNav({ token, hqMode }: BottomNavProps) {
   ];
 
   return (
-    <nav className="safe-nav fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-white/95 shadow-[0_-12px_30px_rgba(0,96,176,0.12)] backdrop-blur lg:hidden">
+    <nav className="safe-nav fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-white/95 shadow-[0_-12px_30px_rgba(0,96,176,0.12)] backdrop-blur">
       <div className="mx-auto grid max-w-6xl grid-cols-3 gap-2 px-3 py-2">
         {items.map((item) =>
           item.href ? (

@@ -71,9 +71,3 @@ button {
 .safe-nav {
   padding-bottom: env(safe-area-inset-bottom);
 }
-
-@media (min-width: 1024px) {
-  .safe-bottom {
-    padding-bottom: 32px;
-  }
-}

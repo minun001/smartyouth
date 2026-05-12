@@ -230,7 +230,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                     <div>
                       <h2 className="text-lg font-black text-[var(--brand-strong)]">현재 즉시 대응 부스 없음</h2>
                       <p className="mt-1 text-sm font-bold text-sky-800">
-                        혼잡, 도움 요청, 재료 부족, 일시중단 상태를 계속 감시 중입니다.
+                        혼잡, 도움 요청, 일시중단 상태를 계속 감시 중입니다.
                       </p>
                     </div>
                     <span className="rounded-md bg-[var(--asan-green)] px-3 py-2 text-sm font-black text-white">

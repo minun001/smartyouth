@@ -8,7 +8,6 @@ import {
   congestionColors,
   congestionLabels,
   formatRelativeUpdatedAt,
-  materialStatusLabels,
   operationStatusLabels
 } from '@/lib/statusLabels';
 import BoothCard from './BoothCard';
@@ -36,6 +35,12 @@ export default function MapView({
 
   return (
     <section className={fullScreen ? 'relative flex h-full flex-col bg-slate-100' : 'space-y-4'}>
+      {fullScreen ? (
+        <div className="shrink-0 border-b border-[var(--line)] bg-white px-4 py-3 shadow-[0_10px_24px_rgba(0,96,176,0.10)]">
+          <MapLegend />
+        </div>
+      ) : null}
+
       {!imageMissing ? (
         <div
           className={
@@ -50,11 +55,7 @@ export default function MapView({
                 <div className="text-xs font-black uppercase tracking-[0.14em] text-[var(--asan-yellow)]">Field Map</div>
                 <div className="text-lg font-black">부스 배치도</div>
               </div>
-              <div className="flex gap-2 text-xs font-black">
-                <LegendDot color="bg-slate-950" label="정상" />
-                <LegendDot color="bg-orange-500" label="혼잡" />
-                <LegendDot color="bg-red-500" label="문제" />
-              </div>
+              <MapLegend />
             </div>
           ) : null}
           <div
@@ -108,14 +109,6 @@ export default function MapView({
                 : null}
             </div>
           </div>
-
-          {fullScreen ? (
-            <div className="pointer-events-none absolute left-3 top-3 z-20 flex gap-2 text-[11px] font-black text-white">
-              <LegendDot color="bg-slate-950" label="정상" />
-              <LegendDot color="bg-orange-500" label="혼잡" />
-              <LegendDot color="bg-red-500" label="문제" />
-            </div>
-          ) : null}
 
           {fullScreen && selectedBooth ? (
             <SelectedBoothFloat
@@ -222,15 +215,9 @@ function SelectedBoothFloat({
           </button>
         </div>
 
-        <div className="mt-3 grid grid-cols-4 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2">
           <MiniStatus label="상태" value={operationStatusLabels[status.operationStatus]} />
           <MiniStatus label="혼잡" value={congestionLabels[status.congestionLevel]} color={congestionColor} />
-          <MiniStatus label="대기" value={status.waitMinutes === 30 ? '30분+' : `${status.waitMinutes}분`} />
-          <MiniStatus
-            label="재료"
-            value={materialStatusLabels[status.materialStatus]}
-            color={status.materialStatus === 'OUT' ? '#ef4444' : status.materialStatus === 'LOW' ? '#f97316' : '#22c55e'}
-          />
         </div>
 
         {booth.problemReasons.length > 0 || status.helpRequested ? (
@@ -276,10 +263,29 @@ function MiniStatus({ label, value, color }: { label: string; value: string; col
   );
 }
 
-function LegendDot({ color, label }: { color: string; label: string }) {
+const legendItems = [
+  { dotClass: 'bg-slate-950', textColor: '#020617', label: '정상' },
+  { dotClass: 'bg-orange-500', textColor: '#f97316', label: '혼잡' },
+  { dotClass: 'bg-red-500', textColor: '#ef4444', label: '문제' }
+];
+
+function MapLegend() {
   return (
-    <span className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-1">
-      <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
+    <div className="flex flex-wrap items-center gap-3">
+      {legendItems.map((item) => (
+        <LegendDot key={item.label} dotClass={item.dotClass} textColor={item.textColor} label={item.label} />
+      ))}
+    </div>
+  );
+}
+
+function LegendDot({ dotClass, textColor, label }: { dotClass: string; textColor: string; label: string }) {
+  return (
+    <span
+      className="flex items-center gap-2 rounded-md bg-white px-3 py-2 text-base font-black shadow-sm sm:text-lg"
+      style={{ color: textColor }}
+    >
+      <span className={`h-4 w-4 rounded-full ${dotClass}`} />
       {label}
     </span>
   );
