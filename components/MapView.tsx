@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { appPath } from '@/lib/clientConfig';
 import type { BoothWithStatus } from '@/lib/types';
 import {
@@ -20,6 +20,7 @@ type MapViewProps = {
   editable?: boolean;
   fullScreen?: boolean;
   showProblemList?: boolean;
+  bulkControls?: ReactNode;
   onEdit?: (booth: BoothWithStatus) => void;
 };
 
@@ -187,6 +188,7 @@ export default function MapView({
   editable = false,
   fullScreen = false,
   showProblemList = true,
+  bulkControls,
   onEdit
 }: MapViewProps) {
   const [imageMissing, setImageMissing] = useState(false);
@@ -378,6 +380,7 @@ export default function MapView({
     <section className={fullScreen ? 'relative flex h-full min-w-0 flex-1 flex-col bg-slate-100' : 'space-y-4'}>
       {fullScreen ? (
         <div className="shrink-0 border-b border-[var(--line)] bg-white px-4 py-3 shadow-[0_10px_24px_rgba(0,96,176,0.10)]">
+          {bulkControls ? <div className="mb-3">{bulkControls}</div> : null}
           <MapLegend />
         </div>
       ) : null}
@@ -680,7 +683,7 @@ const legendItems = [
 
 function MapLegend() {
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div data-map-legend="true" className="flex flex-wrap items-center gap-3">
       {legendItems.map((item) => (
         <LegendDot key={item.label} color={item.color} label={item.label} />
       ))}

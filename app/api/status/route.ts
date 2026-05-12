@@ -12,7 +12,7 @@ import type { OperationStatus } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-const bulkOperationStatuses: OperationStatus[] = ['OPEN', 'CLOSED'];
+const bulkOperationStatuses: OperationStatus[] = ['READY', 'OPEN', 'CLOSED'];
 
 export async function GET(request: Request) {
   try {

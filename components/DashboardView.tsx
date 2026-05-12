@@ -129,6 +129,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
   async function patchAllOperationStatus(operationStatus: OperationStatus) {
     if (!canEdit) return;
 
+    const label = operationStatusBulkLabel(operationStatus);
     setBulkSaving(operationStatus);
     setBulkSavedMessage(null);
     setError(null);
@@ -137,7 +138,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
       if (isStaticDemo) {
         const result = await patchStaticAllOperationStatuses(token, operationStatus);
         setData(getStaticStatus(token));
-        setBulkSavedMessage(`전체 ${operationStatus === 'OPEN' ? '운영중' : '마감'}으로 변경됨 · ${formatTime(result.savedAt)}`);
+        setBulkSavedMessage(`전체 ${label}으로 변경됨 · ${formatTime(result.savedAt)}`);
         return;
       }
 
@@ -154,12 +155,18 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
 
       const result = (await response.json()) as { savedAt?: string };
       await loadStatus();
-      setBulkSavedMessage(`전체 ${operationStatus === 'OPEN' ? '운영중' : '마감'}으로 변경됨 · ${formatTime(result.savedAt)}`);
+      setBulkSavedMessage(`전체 ${label}으로 변경됨 · ${formatTime(result.savedAt)}`);
     } catch {
       setError('일괄 변경에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setBulkSaving(null);
     }
+  }
+
+  function confirmAndPatchAllOperationStatus(operationStatus: OperationStatus) {
+    const label = operationStatusBulkLabel(operationStatus);
+    if (!window.confirm(`전체 ${data?.booths.length ?? 0}개 부스를 ${label}으로 변경할까요?`)) return;
+    void patchAllOperationStatus(operationStatus);
   }
 
   async function resetAllOperations() {
@@ -206,6 +213,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
   }
 
   const isMapView = view === 'map';
+  const bulkControlsDisabled = !canEdit || Boolean(bulkSaving) || resetSaving;
 
   return (
     <div className="min-h-screen text-slate-950">
@@ -270,6 +278,15 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                 editable={canEdit}
                 fullScreen
                 showProblemList={false}
+                bulkControls={
+                  canEdit ? (
+                    <MapBulkOperationControls
+                      saving={bulkSaving}
+                      disabled={bulkControlsDisabled}
+                      onChange={(operationStatus) => void confirmAndPatchAllOperationStatus(operationStatus)}
+                    />
+                  ) : undefined
+                }
                 onEdit={(selected) => setSelectedBoothNo(selected.boothNo)}
               />
               {selectedBooth && canEdit ? (
@@ -416,6 +433,71 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
       </main>
 
       <BottomNav token={token} hqMode={mode === 'hq' && Boolean(token)} />
+    </div>
+  );
+}
+
+function operationStatusBulkLabel(operationStatus: OperationStatus) {
+  if (operationStatus === 'READY') return '준비중';
+  if (operationStatus === 'OPEN') return '운영중';
+  if (operationStatus === 'PAUSED') return '잠시중단';
+  return '마감';
+}
+
+function MapBulkOperationControls({
+  saving,
+  disabled,
+  onChange
+}: {
+  saving: OperationStatus | null;
+  disabled: boolean;
+  onChange: (operationStatus: OperationStatus) => void;
+}) {
+  const actions: Array<{
+    status: OperationStatus;
+    label: string;
+    className: string;
+  }> = [
+    {
+      status: 'READY',
+      label: '일괄 준비중',
+      className: 'border-[var(--asan-blue)] bg-sky-50 text-[var(--brand-strong)]'
+    },
+    {
+      status: 'OPEN',
+      label: '일괄 운영중',
+      className: 'border-emerald-500 bg-emerald-500 text-white'
+    },
+    {
+      status: 'CLOSED',
+      label: '일괄 마감',
+      className: 'border-slate-900 bg-slate-900 text-white'
+    }
+  ];
+
+  return (
+    <div
+      data-map-bulk-controls="true"
+      className="flex flex-col gap-2 rounded-lg border border-[var(--line)] bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="min-w-0">
+        <div className="text-sm font-black text-slate-950">일괄 운영 변경</div>
+        <div className="mt-0.5 text-xs font-bold text-slate-500">지도 전체 부스를 한 번에 전환합니다.</div>
+      </div>
+      <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
+        {actions.map((action) => (
+          <button
+            key={action.status}
+            type="button"
+            data-map-bulk-action={action.status}
+            disabled={disabled}
+            onClick={() => onChange(action.status)}
+            className={`min-h-11 rounded-lg border px-2 text-sm font-black shadow-sm active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${action.className}`}
+          >
+            {saving === action.status ? '변경 중' : action.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
