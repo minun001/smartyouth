@@ -521,9 +521,8 @@ function HelpRequestForm({
           <label className="block">
             <span className="text-sm font-black text-slate-700">부스 번호</span>
             <input
-              type="number"
-              min={1}
-              max={44}
+              type="text"
+              pattern="[0-9]*"
               inputMode="numeric"
               value={boothNo}
               disabled={!canSubmit || saving}
