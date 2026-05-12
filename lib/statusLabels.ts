@@ -43,6 +43,22 @@ export const congestionSoftColors: Record<CongestionLevel, string> = {
 
 export const congestionLevels: CongestionLevel[] = [0, 1, 2, 3, 4];
 
+export function isCongestedLevel(level: CongestionLevel) {
+  return level >= 3;
+}
+
+export function congestionStatusLabel(level: CongestionLevel) {
+  return isCongestedLevel(level) ? '혼잡' : '여유';
+}
+
+export function congestionStatusColor(level: CongestionLevel) {
+  return isCongestedLevel(level) ? '#f97316' : '#00b010';
+}
+
+export function congestionStatusSoftColor(level: CongestionLevel) {
+  return isCongestedLevel(level) ? '#fff7ed' : '#ecfdf5';
+}
+
 export const materialStatusLabels: Record<MaterialStatus, string> = {
   OK: '충분',
   LOW: '부족',

@@ -1,5 +1,5 @@
 import type { BoothStatus } from './types';
-import { congestionLabels, operationStatusLabels } from './statusLabels';
+import { congestionStatusLabel, operationStatusLabels } from './statusLabels';
 
 const THIRTY_MINUTES = 30 * 60 * 1000;
 
@@ -7,7 +7,7 @@ export function getProblemReasons(status: BoothStatus, now = new Date(), eventAc
   const reasons: string[] = [];
 
   if (status.congestionLevel >= 3) {
-    reasons.push(congestionLabels[status.congestionLevel]);
+    reasons.push(congestionStatusLabel(status.congestionLevel));
   }
 
   if (status.operationStatus === 'PAUSED') {

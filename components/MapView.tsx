@@ -5,9 +5,10 @@ import { appPath } from '@/lib/clientConfig';
 import type { BoothWithStatus } from '@/lib/types';
 import {
   boothTypeLabels,
-  congestionColors,
-  congestionLabels,
+  congestionStatusColor,
+  congestionStatusLabel,
   formatRelativeUpdatedAt,
+  isCongestedLevel,
   operationStatusLabels
 } from '@/lib/statusLabels';
 import BoothCard from './BoothCard';
@@ -78,7 +79,7 @@ export default function MapView({
                     .filter((booth) => typeof booth.x === 'number' && typeof booth.y === 'number')
                     .map((booth) => {
                       const selected = booth.boothNo === selectedBoothNo;
-                      const isCongested = booth.status.congestionLevel >= 3;
+                      const isCongested = isCongestedLevel(booth.status.congestionLevel);
                       return (
                         <button
                           key={booth.boothNo}
@@ -186,7 +187,7 @@ function SelectedBoothFloat({
   onEdit?: (booth: BoothWithStatus) => void;
 }) {
   const status = booth.status;
-  const congestionColor = congestionColors[status.congestionLevel];
+  const congestionColor = congestionStatusColor(status.congestionLevel);
   const name = booth.name.length > 24 ? `${booth.name.slice(0, 24)}...` : booth.name;
 
   return (
@@ -217,7 +218,7 @@ function SelectedBoothFloat({
 
         <div className="mt-3 grid grid-cols-2 gap-2">
           <MiniStatus label="상태" value={operationStatusLabels[status.operationStatus]} />
-          <MiniStatus label="혼잡" value={congestionLabels[status.congestionLevel]} color={congestionColor} />
+          <MiniStatus label="혼잡" value={congestionStatusLabel(status.congestionLevel)} color={congestionColor} />
         </div>
 
         {booth.problemReasons.length > 0 || status.helpRequested ? (

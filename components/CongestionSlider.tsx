@@ -1,6 +1,6 @@
 'use client';
 
-import { congestionColors, congestionLabels, congestionLevels } from '@/lib/statusLabels';
+import { congestionStatusColor, congestionStatusLabel, isCongestedLevel } from '@/lib/statusLabels';
 import type { CongestionLevel } from '@/lib/types';
 
 type CongestionSliderProps = {
@@ -10,47 +10,53 @@ type CongestionSliderProps = {
 };
 
 export default function CongestionSlider({ value, disabled, onChange }: CongestionSliderProps) {
+  const congested = isCongestedLevel(value);
+  const nextValue: CongestionLevel = congested ? 0 : 3;
+  const activeColor = congestionStatusColor(value);
+  const activeLabel = congestionStatusLabel(value);
+
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
-      <div className="mb-3 flex items-end justify-between gap-3">
-        <div>
-          <div className="text-sm font-extrabold text-slate-500">혼잡도</div>
-          <div className="text-3xl font-black" style={{ color: congestionColors[value] }}>
-            {congestionLabels[value]}
-          </div>
-        </div>
-        <div className="text-sm font-black text-slate-500">{value}/4</div>
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-[inset_7px_7px_18px_rgba(15,23,42,0.08),inset_-7px_-7px_18px_rgba(255,255,255,0.95)]">
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(0)}
+          className="min-h-12 rounded-lg px-3 text-2xl font-black disabled:cursor-not-allowed disabled:opacity-60"
+          style={{ color: congested ? '#64748b' : '#00b010' }}
+        >
+          여유
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(3)}
+          className="min-h-12 rounded-lg px-3 text-2xl font-black disabled:cursor-not-allowed disabled:opacity-60"
+          style={{ color: congested ? '#f97316' : '#64748b' }}
+        >
+          혼잡
+        </button>
       </div>
-      <input
-        type="range"
-        min={0}
-        max={4}
-        step={1}
-        value={value}
+
+      <button
+        type="button"
+        role="switch"
+        aria-checked={congested}
+        aria-label={`혼잡도 ${activeLabel}. 누르면 ${congested ? '여유' : '혼잡'}으로 변경`}
         disabled={disabled}
-        onChange={(event) => onChange(Number(event.target.value) as CongestionLevel)}
-        className="h-4 w-full appearance-none rounded-full disabled:opacity-60"
-        style={{
-          accentColor: congestionColors[value],
-          background: 'linear-gradient(90deg, var(--asan-green), var(--asan-sky), var(--asan-yellow), #f97316, #ef4444)'
-        }}
-      />
-      <div className="mt-3 grid grid-cols-5 gap-1">
-        {congestionLevels.map((level) => (
-          <button
-            key={level}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(level)}
-            className={`min-h-12 rounded-md px-1 text-[11px] font-black disabled:cursor-not-allowed disabled:opacity-60 ${
-              value === level ? 'text-white' : 'bg-slate-100 text-slate-700'
-            }`}
-            style={value === level ? { backgroundColor: congestionColors[level] } : undefined}
-          >
-            {congestionLabels[level]}
-          </button>
-        ))}
-      </div>
+        onClick={() => onChange(nextValue)}
+        className="relative mt-3 h-16 w-full rounded-full bg-[#eef3f8] shadow-[inset_8px_8px_18px_rgba(15,23,42,0.16),inset_-8px_-8px_18px_rgba(255,255,255,1)] transition disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <span
+          className="absolute top-2 flex h-12 w-[calc(50%-12px)] items-center justify-center rounded-full text-lg font-black text-white shadow-[8px_8px_18px_rgba(15,23,42,0.18),-6px_-6px_14px_rgba(255,255,255,0.9)] transition-all duration-200"
+          style={{
+            left: congested ? 'calc(50% + 4px)' : '8px',
+            backgroundColor: activeColor
+          }}
+        >
+          {activeLabel}
+        </span>
+      </button>
     </div>
   );
 }

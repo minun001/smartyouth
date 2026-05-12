@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import {
   boothTypeLabels,
-  congestionColors,
-  congestionLabels,
-  congestionSoftColors,
+  congestionStatusColor,
+  congestionStatusLabel,
+  congestionStatusSoftColor,
   formatRelativeUpdatedAt,
   operationStatusLabels
 } from '@/lib/statusLabels';
@@ -64,8 +64,8 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm font-extrabold text-slate-600">
               <span>{operationStatusLabels[status.operationStatus]}</span>
               <span>·</span>
-              <span className="font-black" style={{ color: congestionColors[status.congestionLevel] }}>
-                {congestionLabels[status.congestionLevel]}
+              <span className="font-black" style={{ color: congestionStatusColor(status.congestionLevel) }}>
+                {congestionStatusLabel(status.congestionLevel)}
               </span>
               {status.helpRequested ? (
                 <>
@@ -101,8 +101,8 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
             <StatusPill label="상태" value={operationStatusLabels[status.operationStatus]} />
             <StatusPill
               label="혼잡"
-              value={congestionLabels[status.congestionLevel]}
-              color={congestionColors[status.congestionLevel]}
+              value={congestionStatusLabel(status.congestionLevel)}
+              color={congestionStatusColor(status.congestionLevel)}
             />
           </div>
 
