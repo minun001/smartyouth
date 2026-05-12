@@ -40,7 +40,7 @@ const MAP_IMAGE_WIDTH = 1135;
 const MAP_IMAGE_HEIGHT = 710;
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 3.2;
-const DESKTOP_DEFAULT_MAX_ZOOM = 1.35;
+const TOUCH_FOCUS_ZOOM = 0.92;
 const MARKER_SIZE = 44;
 const BOOTH_POSITION_OVERRIDES: Record<number, Point> = {
   8: { x: 33.0, y: 64.8 }
@@ -64,13 +64,9 @@ function getDefaultScale(size: ViewportSize) {
   }
 
   const fitScale = getFitScale(size);
-  const widthScale = size.width / MAP_IMAGE_WIDTH;
-  const comfortFloor = size.width >= 1280 ? 1.08 : size.width >= 1024 ? 1 : size.width >= 768 ? 0.86 : 0.72;
-  const widthTarget = widthScale * (size.width >= 1024 ? 0.96 : 1.35);
-  const defaultMax =
-    size.width >= 1440 ? DESKTOP_DEFAULT_MAX_ZOOM : size.width >= 1024 ? 1.18 : size.width >= 768 ? 1 : 0.82;
+  const widthFitScale = size.width / MAP_IMAGE_WIDTH;
 
-  return clamp(Math.max(widthTarget, comfortFloor), fitScale, defaultMax);
+  return clamp(widthFitScale, fitScale, MAX_ZOOM);
 }
 
 function getCenteredTransform(size: ViewportSize, scale: number): MapTransform {
@@ -134,6 +130,55 @@ function getViewportPoint(point: Point, viewport: HTMLDivElement | null): Point 
   };
 }
 
+function getBoothMapPoint(booth: BoothWithStatus): Point {
+  const position = BOOTH_POSITION_OVERRIDES[booth.boothNo] ?? { x: booth.x ?? 0, y: booth.y ?? 0 };
+
+  return {
+    x: (position.x / 100) * MAP_IMAGE_WIDTH,
+    y: (position.y / 100) * MAP_IMAGE_HEIGHT
+  };
+}
+
+function getBoothFocusTarget(size: ViewportSize, fullScreen: boolean): Point {
+  if (!fullScreen) {
+    return { x: size.width / 2, y: size.height / 2 };
+  }
+
+  const verticalRatio = size.width < 640 ? 0.34 : size.width < 1024 ? 0.42 : 0.5;
+
+  return {
+    x: size.width / 2,
+    y: size.height * verticalRatio
+  };
+}
+
+function getFocusScale(size: ViewportSize, currentScale: number) {
+  const widthFitScale = getDefaultScale(size);
+  const touchFloor = size.width < 768 ? TOUCH_FOCUS_ZOOM : widthFitScale;
+
+  return clamp(Math.max(currentScale, widthFitScale, touchFloor), getFitScale(size), MAX_ZOOM);
+}
+
+function getBoothFocusTransform(
+  booth: BoothWithStatus,
+  size: ViewportSize,
+  currentTransform: MapTransform,
+  fullScreen: boolean
+) {
+  const mapPoint = getBoothMapPoint(booth);
+  const target = getBoothFocusTarget(size, fullScreen);
+  const scale = getFocusScale(size, currentTransform.scale);
+
+  return constrainTransform(
+    {
+      scale,
+      x: target.x - mapPoint.x * scale,
+      y: target.y - mapPoint.y * scale
+    },
+    size
+  );
+}
+
 export default function MapView({
   booths,
   editable = false,
@@ -193,6 +238,18 @@ export default function MapView({
     hasUserAdjustedMapRef.current = false;
     setTransform(defaultTransform);
   }, [defaultTransform, setTransform]);
+
+  const focusBooth = useCallback(
+    (booth: BoothWithStatus) => {
+      if (!viewportSize.width || !viewportSize.height) {
+        return;
+      }
+
+      hasUserAdjustedMapRef.current = true;
+      setTransform(getBoothFocusTransform(booth, viewportSize, transformRef.current, fullScreen));
+    },
+    [fullScreen, setTransform, viewportSize]
+  );
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -315,7 +372,7 @@ export default function MapView({
   );
 
   return (
-    <section className={fullScreen ? 'relative flex h-full flex-col bg-slate-100' : 'space-y-4'}>
+    <section className={fullScreen ? 'relative flex h-full min-w-0 flex-1 flex-col bg-slate-100' : 'space-y-4'}>
       {fullScreen ? (
         <div className="shrink-0 border-b border-[var(--line)] bg-white px-4 py-3 shadow-[0_10px_24px_rgba(0,96,176,0.10)]">
           <MapLegend />
@@ -402,6 +459,7 @@ export default function MapView({
                             didDragRef.current = false;
                             return;
                           }
+                          focusBooth(booth);
                           setSelectedBoothNo(booth.boothNo);
                         }}
                         className={`absolute z-20 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full transition active:scale-95 ${
@@ -462,9 +520,9 @@ export default function MapView({
                 onClick={resetTransform}
                 disabled={!canReset}
                 className="min-h-11 px-3 text-xs font-black text-slate-700 disabled:text-slate-300"
-                aria-label="지도 보기 맞춤"
+                aria-label="지도 폭 맞춤"
               >
-                맞춤
+                폭맞춤
               </button>
             </div>
           </div>
