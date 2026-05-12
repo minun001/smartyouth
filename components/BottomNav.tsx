@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { isStaticDemo } from '@/lib/clientConfig';
 
 type BottomNavProps = {
   boothNo?: number;
@@ -14,7 +15,7 @@ export default function BottomNav({ token, hqMode }: BottomNavProps) {
   const suffix = token ? `?t=${encodeURIComponent(token)}` : '';
   const statusHref = hqMode ? `/hq${suffix}` : '/';
   const overviewHref = hqMode ? `/overview${suffix}` : '/overview';
-  const helpHref = hqMode ? `/help${suffix}` : undefined;
+  const helpHref = hqMode ? `/help${suffix}` : isStaticDemo ? '/help?t=demo-hq' : '/help';
 
   const items = [
     {
