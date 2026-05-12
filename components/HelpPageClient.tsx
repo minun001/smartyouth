@@ -20,6 +20,20 @@ type HelpPageClientProps = {
   token?: string;
 };
 
+type DragPreviewState = {
+  id: string;
+  boothNo: number;
+  boothName: string;
+  helpType: HelpType;
+  memo?: string;
+  x: number;
+  y: number;
+  width: number;
+  pointerOffsetX: number;
+  pointerOffsetY: number;
+  completing: boolean;
+};
+
 export default function HelpPageClient({ token }: HelpPageClientProps) {
   const [data, setData] = useState<ClientStatusResponse | null>(() =>
     isStaticDemo ? getInitialStaticStatus(token) : null
@@ -27,6 +41,8 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragPreview, setDragPreview] = useState<DragPreviewState | null>(null);
+  const [completingId, setCompletingId] = useState<string | null>(null);
   const [isOverCompleteZone, setIsOverCompleteZone] = useState(false);
   const [requestBoothNo, setRequestBoothNo] = useState('');
   const [requestType, setRequestType] = useState<HelpType>('ETC');
@@ -36,6 +52,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
   const [resetSaving, setResetSaving] = useState(false);
   const [resetSavedMessage, setResetSavedMessage] = useState<string | null>(null);
   const completeZoneRef = useRef<HTMLDivElement | null>(null);
+  const dropAnimationTimerRef = useRef<number | null>(null);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -79,6 +96,14 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
     const id = window.setTimeout(() => setResetSavedMessage(null), 3500);
     return () => window.clearTimeout(id);
   }, [resetSavedMessage]);
+
+  useEffect(() => {
+    return () => {
+      if (dropAnimationTimerRef.current) {
+        window.clearTimeout(dropAnimationTimerRef.current);
+      }
+    };
+  }, []);
 
   const boothNameByNo = useMemo(() => {
     return new Map(data?.booths.map((booth) => [booth.boothNo, booth.name]) ?? []);
@@ -220,8 +245,24 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
   function startDrag(event: ReactPointerEvent<HTMLElement>, incident: Incident) {
     if (!data?.access.hq || savingId || incident.status === 'RESOLVED') return;
+    event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
+    const sourceElement = event.currentTarget.closest('article') ?? event.currentTarget;
+    const rect = sourceElement.getBoundingClientRect();
     setDraggingId(incident.id);
+    setDragPreview({
+      id: incident.id,
+      boothNo: incident.boothNo,
+      boothName: boothNameByNo.get(incident.boothNo) ?? '부스',
+      helpType: incident.type,
+      memo: incident.memo,
+      x: rect.left,
+      y: rect.top,
+      width: rect.width,
+      pointerOffsetX: event.clientX - rect.left,
+      pointerOffsetY: event.clientY - rect.top,
+      completing: false
+    });
     setIsOverCompleteZone(false);
   }
 
@@ -232,13 +273,50 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
       const incidentId = draggingId;
       const shouldComplete = isCoordinateOverCompleteZone(clientX, clientY);
       setDraggingId(null);
-      setIsOverCompleteZone(false);
-      if (shouldComplete) void setIncidentStatus(incidentId, 'RESOLVED');
+
+      if (!shouldComplete) {
+        setDragPreview(null);
+        setIsOverCompleteZone(false);
+        return;
+      }
+
+      setCompletingId(incidentId);
+      setIsOverCompleteZone(true);
+      setDragPreview((preview) => {
+        if (!preview) return preview;
+        const rect = completeZoneRef.current?.getBoundingClientRect();
+        return {
+          ...preview,
+          completing: true,
+          x: rect ? rect.left + rect.width / 2 - preview.width / 2 : preview.x,
+          y: rect ? rect.top + rect.height / 2 - 64 : preview.y
+        };
+      });
+
+      if (dropAnimationTimerRef.current) {
+        window.clearTimeout(dropAnimationTimerRef.current);
+      }
+
+      dropAnimationTimerRef.current = window.setTimeout(() => {
+        setDragPreview(null);
+        setIsOverCompleteZone(false);
+        dropAnimationTimerRef.current = null;
+        void setIncidentStatus(incidentId, 'RESOLVED').finally(() => setCompletingId(null));
+      }, 280);
     };
 
     const handlePointerMove = (event: PointerEvent) => {
       event.preventDefault();
       setIsOverCompleteZone(isCoordinateOverCompleteZone(event.clientX, event.clientY));
+      setDragPreview((preview) =>
+        preview && !preview.completing
+          ? {
+              ...preview,
+              x: event.clientX - preview.pointerOffsetX,
+              y: event.clientY - preview.pointerOffsetY
+            }
+          : preview
+      );
     };
     const handlePointerUp = (event: PointerEvent) => finishDrag(event.clientX, event.clientY);
     const handlePointerCancel = () => {
@@ -250,6 +328,15 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
       if (!touch) return;
       event.preventDefault();
       setIsOverCompleteZone(isCoordinateOverCompleteZone(touch.clientX, touch.clientY));
+      setDragPreview((preview) =>
+        preview && !preview.completing
+          ? {
+              ...preview,
+              x: touch.clientX - preview.pointerOffsetX,
+              y: touch.clientY - preview.pointerOffsetY
+            }
+          : preview
+      );
     };
     const handleTouchEnd = (event: TouchEvent) => {
       const touch = event.changedTouches[0];
@@ -341,14 +428,18 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                 <div className="grid gap-3 lg:grid-cols-2">
                   {activeIncidents.map((incident) => {
                     const isDragging = draggingId === incident.id;
+                    const isCompleting = completingId === incident.id;
                     const canHandle = data.access.hq && savingId !== incident.id;
 
                     return (
                       <article
                         key={incident.id}
+                        data-help-active-card={incident.id}
                         className={`rounded-lg border bg-white p-4 shadow-sm transition ${
+                          isCompleting ? 'scale-[0.98] opacity-35' : ''
+                        } ${
                           isDragging
-                            ? 'scale-[0.99] border-[var(--asan-blue)] shadow-[0_18px_48px_rgba(0,96,176,0.22)]'
+                            ? 'scale-[0.99] border-[var(--asan-blue)] opacity-45 shadow-[0_18px_48px_rgba(0,96,176,0.22)]'
                             : incident.status === 'NEW'
                               ? 'border-red-200'
                               : 'border-[var(--line)]'
@@ -386,6 +477,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                         </div>
 
                         <div
+                          data-help-drag-handle={incident.id}
                           role="button"
                           tabIndex={canHandle ? 0 : -1}
                           aria-label={`부스 ${incident.boothNo} 도움 요청 완료 처리`}
@@ -402,7 +494,9 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                               : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
                           }`}
                         >
-                          <span>{savingId === incident.id ? '처리 중' : '끌고 놓기'}</span>
+                          <span>
+                            {savingId === incident.id ? '처리 중' : isDragging && isOverCompleteZone ? '놓으면 완료' : '끌고 놓기'}
+                          </span>
                           <span className="rounded-md bg-white px-3 py-1 text-sm">완료</span>
                         </div>
 
@@ -436,10 +530,11 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
             </section>
 
             <div
+              data-help-complete-zone="true"
               ref={completeZoneRef}
               className={`sticky bottom-[calc(env(safe-area-inset-bottom)+var(--bottom-nav-height)+8px)] z-30 rounded-lg border-2 border-dashed p-4 text-center shadow-[0_18px_48px_rgba(15,23,42,0.18)] transition ${
                 isOverCompleteZone
-                  ? 'border-emerald-500 bg-emerald-500 text-white'
+                  ? 'help-complete-zone-active border-emerald-500 bg-emerald-500 text-white'
                   : draggingId
                     ? 'border-[var(--asan-blue)] bg-white text-[var(--brand-strong)]'
                     : 'border-slate-300 bg-white text-slate-700'
@@ -461,6 +556,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                   {resolvedIncidents.slice(0, 8).map((incident) => (
                     <article
                       key={incident.id}
+                      data-help-resolved-card={incident.id}
                       className="rounded-lg border border-emerald-100 bg-emerald-50 p-4 text-sm font-bold text-slate-700"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -496,8 +592,54 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
           </>
         ) : null}
       </main>
+      {dragPreview ? <HelpDragPreview preview={dragPreview} isOverCompleteZone={isOverCompleteZone} /> : null}
       <BottomNav token={token} hqMode={data?.access.hq ?? false} />
     </div>
+  );
+}
+
+function HelpDragPreview({
+  preview,
+  isOverCompleteZone
+}: {
+  preview: DragPreviewState;
+  isOverCompleteZone: boolean;
+}) {
+  return (
+    <article
+      data-help-drag-preview={preview.id}
+      data-help-drag-state={preview.completing || isOverCompleteZone ? 'complete' : 'dragging'}
+      aria-hidden="true"
+      className={`help-drag-preview fixed left-0 top-0 z-[70] rounded-lg border p-4 ${
+        preview.completing || isOverCompleteZone
+          ? 'help-drag-preview-complete border-emerald-300 bg-emerald-50'
+          : 'border-[var(--asan-blue)] bg-white'
+      }`}
+      style={{
+        width: preview.width,
+        transform: `translate3d(${preview.x}px, ${preview.y}px, 0) scale(${
+          preview.completing ? 0.92 : isOverCompleteZone ? 1.02 : 1
+        })`
+      }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-black text-slate-500">부스 {preview.boothNo}</div>
+          <div className="mt-1 truncate text-lg font-black leading-snug text-slate-950">{preview.boothName}</div>
+        </div>
+        <div className="shrink-0 rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">
+          {helpTypeLabels[preview.helpType]}
+        </div>
+      </div>
+      {preview.memo ? (
+        <div className="mt-3 line-clamp-2 rounded-md bg-white/80 p-3 text-sm font-bold text-slate-700">
+          {preview.memo}
+        </div>
+      ) : null}
+      <div className="mt-3 rounded-lg bg-[var(--asan-blue)] px-4 py-3 text-center text-sm font-black text-white">
+        {preview.completing ? '완료 영역으로 이동 중' : isOverCompleteZone ? '놓으면 완료 처리' : '카드를 완료 영역으로 이동'}
+      </div>
+    </article>
   );
 }
 
