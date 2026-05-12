@@ -257,7 +257,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
               />
 
               {statusAttentionBooths.length > 0 ? (
-                <section className="rounded-lg border border-red-200 bg-red-50 p-4 shadow-sm">
+                <section className="rounded-lg border border-orange-200 bg-orange-50 p-4 shadow-sm">
                   <SectionHeader title="상태 확인" count={statusAttentionBooths.length} tone="danger" />
                   <div className="mt-3 grid gap-3 lg:grid-cols-2">
                     {statusAttentionBooths.slice(0, 4).map((booth) => (
@@ -493,7 +493,7 @@ function CommandBrief({
 
 function BriefMetric({ label, value, danger }: { label: string; value: number; danger?: boolean }) {
   return (
-    <div className={`rounded-lg p-3 ${danger ? 'bg-red-500 text-white' : 'bg-white/10 text-white'}`}>
+    <div className={`rounded-lg p-3 ${danger ? 'bg-orange-500 text-white' : 'bg-white/10 text-white'}`}>
       <div className="text-xs font-black text-white/75">{label}</div>
       <div className="mt-1 text-3xl font-black leading-none">{value}</div>
     </div>
@@ -502,7 +502,7 @@ function BriefMetric({ label, value, danger }: { label: string; value: number; d
 
 function StatusStrip({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
   return (
-    <div className={`rounded-lg px-3 py-2 ${danger ? 'bg-red-500' : 'bg-white/10'}`}>
+    <div className={`rounded-lg px-3 py-2 ${danger ? 'bg-orange-500' : 'bg-white/10'}`}>
       <div className="text-[11px] font-black text-white/70">{label}</div>
       <div className="mt-0.5 truncate text-sm font-black text-white">{value}</div>
     </div>
@@ -512,11 +512,11 @@ function StatusStrip({ label, value, danger }: { label: string; value: string; d
 function SectionHeader({ title, count, tone }: { title: string; count?: number; tone?: 'danger' }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <h2 className={`text-xl font-black ${tone === 'danger' ? 'text-red-700' : 'text-slate-950'}`}>{title}</h2>
+      <h2 className={`text-xl font-black ${tone === 'danger' ? 'text-orange-700' : 'text-slate-950'}`}>{title}</h2>
       {typeof count === 'number' ? (
         <span
           className={`rounded-md px-3 py-1 text-sm font-black ${
-            tone === 'danger' ? 'bg-red-600 text-white' : 'bg-[var(--brand)] text-white'
+            tone === 'danger' ? 'bg-orange-500 text-white' : 'bg-[var(--brand)] text-white'
           }`}
         >
           {count}

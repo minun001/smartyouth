@@ -6,7 +6,9 @@ import {
   boothTypeLabels,
   congestionStatusColor,
   congestionStatusLabel,
-  operationStatusLabels
+  operationStatusColor,
+  operationStatusLabels,
+  situationStatusColor
 } from '@/lib/statusLabels';
 import type { BoothWithStatus } from '@/lib/types';
 
@@ -21,21 +23,12 @@ type BoothCardProps = {
 export default function BoothCard({ booth, editable, defaultExpanded = false, onEdit, children }: BoothCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const status = booth.status;
-  const priorityColor = booth.problem
-    ? '#ef4444'
-    : status.operationStatus === 'OPEN'
-      ? '#16a34a'
-      : status.operationStatus === 'PAUSED'
-        ? '#f97316'
-        : status.operationStatus === 'CLOSED'
-          ? '#64748b'
-          : '#0060b0';
+  const priorityColor = situationStatusColor(status.operationStatus, status.congestionLevel);
 
   return (
     <article
-      className={`overflow-hidden rounded-lg border bg-white shadow-sm transition ${
-        booth.problem ? 'border-red-200 shadow-red-100' : 'border-[var(--line)]'
-      }`}
+      className="overflow-hidden rounded-lg border bg-white shadow-sm transition"
+      style={{ borderColor: priorityColor }}
     >
       <button
         type="button"
@@ -62,7 +55,9 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
           <div className="min-w-0">
             <div className="truncate text-base font-black text-slate-950">{booth.name}</div>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm font-extrabold text-slate-600">
-              <span>{operationStatusLabels[status.operationStatus]}</span>
+              <span style={{ color: operationStatusColor(status.operationStatus) }}>
+                {operationStatusLabels[status.operationStatus]}
+              </span>
               <span>·</span>
               <span className="font-black" style={{ color: congestionStatusColor(status.congestionLevel) }}>
                 {congestionStatusLabel(status.congestionLevel)}
@@ -83,7 +78,11 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
-            <StatusPill label="상태" value={operationStatusLabels[status.operationStatus]} />
+            <StatusPill
+              label="상태"
+              value={operationStatusLabels[status.operationStatus]}
+              color={operationStatusColor(status.operationStatus)}
+            />
             <StatusPill
               label="혼잡"
               value={congestionStatusLabel(status.congestionLevel)}

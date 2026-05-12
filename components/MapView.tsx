@@ -8,7 +8,10 @@ import {
   congestionStatusColor,
   congestionStatusLabel,
   isCongestedLevel,
-  operationStatusLabels
+  operationStatusColor,
+  operationStatusLabels,
+  situationColors,
+  situationStatusColor
 } from '@/lib/statusLabels';
 import BoothCard from './BoothCard';
 
@@ -442,6 +445,10 @@ export default function MapView({
                     const position = BOOTH_POSITION_OVERRIDES[booth.boothNo] ?? { x: booth.x ?? 0, y: booth.y ?? 0 };
                     const left = transform.x + (position.x / 100) * MAP_IMAGE_WIDTH * transform.scale;
                     const top = transform.y + (position.y / 100) * MAP_IMAGE_HEIGHT * transform.scale;
+                    const markerColor = situationStatusColor(
+                      booth.status.operationStatus,
+                      booth.status.congestionLevel
+                    );
 
                     return (
                       <button
@@ -469,14 +476,9 @@ export default function MapView({
                       >
                         <span
                           className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-black text-white shadow-lg ${
-                            booth.problem
-                              ? 'bg-red-500 ring-4 ring-red-200'
-                              : selected
-                                ? 'bg-[var(--asan-sky)] ring-4 ring-[var(--asan-yellow)]'
-                                : isCongested
-                                  ? 'bg-orange-500'
-                                  : 'bg-slate-950'
-                          }`}
+                            selected ? 'ring-4 ring-[var(--asan-yellow)]' : ''
+                          } ${isCongested ? 'shadow-orange-200' : ''}`}
+                          style={{ backgroundColor: markerColor }}
                         >
                           {booth.boothNo}
                         </span>
@@ -578,7 +580,7 @@ export default function MapView({
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-black text-slate-950">문제 부스</h2>
-            <span className="rounded-md bg-red-600 px-3 py-1 text-sm font-black text-white">{problemBooths.length}</span>
+            <span className="rounded-md bg-orange-500 px-3 py-1 text-sm font-black text-white">{problemBooths.length}</span>
           </div>
           {problemBooths.length > 0 ? (
             problemBooths.map((booth) => <BoothCard key={booth.boothNo} booth={booth} />)
@@ -603,7 +605,9 @@ function SelectedBoothFloat({
   onEdit?: (booth: BoothWithStatus) => void;
 }) {
   const status = booth.status;
+  const operationColor = operationStatusColor(status.operationStatus);
   const congestionColor = congestionStatusColor(status.congestionLevel);
+  const situationColor = situationStatusColor(status.operationStatus, status.congestionLevel);
   const name = booth.name.length > 24 ? `${booth.name.slice(0, 24)}...` : booth.name;
 
   return (
@@ -616,7 +620,7 @@ function SelectedBoothFloat({
           <div className="flex min-w-0 items-center gap-3">
             <span
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-base font-black text-white"
-              style={{ backgroundColor: booth.problem ? '#ef4444' : congestionColor }}
+              style={{ backgroundColor: situationColor }}
             >
               {booth.boothNo}
             </span>
@@ -636,7 +640,7 @@ function SelectedBoothFloat({
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <MiniStatus label="상태" value={operationStatusLabels[status.operationStatus]} />
+          <MiniStatus label="상태" value={operationStatusLabels[status.operationStatus]} color={operationColor} />
           <MiniStatus label="혼잡" value={congestionStatusLabel(status.congestionLevel)} color={congestionColor} />
         </div>
 
@@ -668,28 +672,29 @@ function MiniStatus({ label, value, color }: { label: string; value: string; col
 }
 
 const legendItems = [
-  { dotClass: 'bg-slate-950', textColor: '#020617', label: '정상' },
-  { dotClass: 'bg-orange-500', textColor: '#f97316', label: '혼잡' },
-  { dotClass: 'bg-red-500', textColor: '#ef4444', label: '문제' }
+  { color: situationColors.normal, label: '정상' },
+  { color: situationColors.open, label: '운영중' },
+  { color: situationColors.attention, label: '중단/혼잡' },
+  { color: situationColors.closed, label: '마감' }
 ];
 
 function MapLegend() {
   return (
     <div className="flex flex-wrap items-center gap-3">
       {legendItems.map((item) => (
-        <LegendDot key={item.label} dotClass={item.dotClass} textColor={item.textColor} label={item.label} />
+        <LegendDot key={item.label} color={item.color} label={item.label} />
       ))}
     </div>
   );
 }
 
-function LegendDot({ dotClass, textColor, label }: { dotClass: string; textColor: string; label: string }) {
+function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <span
       className="flex items-center gap-2 rounded-md bg-white px-3 py-2 text-base font-black shadow-sm sm:text-lg"
-      style={{ color: textColor }}
+      style={{ color }}
     >
-      <span className={`h-4 w-4 rounded-full ${dotClass}`} />
+      <span className="h-4 w-4 rounded-full" style={{ backgroundColor: color }} />
       {label}
     </span>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { operationStatusLabels, operationStatusOrder } from '@/lib/statusLabels';
+import { operationStatusColor, operationStatusLabels, operationStatusOrder } from '@/lib/statusLabels';
 import type { OperationStatus } from '@/lib/types';
 
 type StatusSegmentedControlProps = {
@@ -14,23 +14,19 @@ export default function StatusSegmentedControl({ value, disabled, onChange }: St
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       {operationStatusOrder.map((status) => {
         const active = value === status;
-        const activeClass =
-          status === 'OPEN'
-            ? 'border-[var(--asan-green)] bg-[var(--asan-green)] text-white'
-            : status === 'PAUSED'
-              ? 'border-orange-500 bg-orange-500 text-white'
-              : status === 'CLOSED'
-                ? 'border-slate-700 bg-slate-700 text-white'
-                : 'border-[var(--asan-blue)] bg-[var(--asan-blue)] text-white';
+        const color = operationStatusColor(status);
         return (
           <button
             key={status}
             type="button"
             disabled={disabled}
             onClick={() => onChange(status)}
-            className={`min-h-14 rounded-lg border px-3 text-base font-black disabled:cursor-not-allowed disabled:opacity-60 ${
-              active ? activeClass : 'border-slate-200 bg-white text-slate-700'
-            }`}
+            className="min-h-14 rounded-lg border px-3 text-base font-black disabled:cursor-not-allowed disabled:opacity-60"
+            style={
+              active
+                ? { borderColor: color, backgroundColor: color, color: '#ffffff' }
+                : { borderColor: '#e2e8f0', backgroundColor: '#ffffff', color }
+            }
           >
             {operationStatusLabels[status]}
           </button>

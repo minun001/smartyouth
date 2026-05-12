@@ -17,6 +17,24 @@ export const operationStatusLabels: Record<OperationStatus, string> = {
 
 export const operationStatusOrder: OperationStatus[] = ['READY', 'OPEN', 'PAUSED', 'CLOSED'];
 
+export const situationColors = {
+  normal: '#0060b0',
+  open: '#16a34a',
+  attention: '#f97316',
+  closed: '#020617'
+} as const;
+
+export const operationStatusColors: Record<OperationStatus, string> = {
+  READY: situationColors.normal,
+  OPEN: situationColors.open,
+  PAUSED: situationColors.attention,
+  CLOSED: situationColors.closed
+};
+
+export function operationStatusColor(status: OperationStatus) {
+  return operationStatusColors[status];
+}
+
 export const congestionLabels: Record<CongestionLevel, string> = {
   0: '여유',
   1: '보통',
@@ -26,19 +44,19 @@ export const congestionLabels: Record<CongestionLevel, string> = {
 };
 
 export const congestionColors: Record<CongestionLevel, string> = {
-  0: '#22c55e',
-  1: '#84cc16',
-  2: '#facc15',
-  3: '#f97316',
-  4: '#ef4444'
+  0: situationColors.normal,
+  1: situationColors.normal,
+  2: situationColors.normal,
+  3: situationColors.attention,
+  4: situationColors.attention
 };
 
 export const congestionSoftColors: Record<CongestionLevel, string> = {
-  0: '#ecfdf5',
-  1: '#f7fee7',
-  2: '#fefce8',
+  0: '#eff6ff',
+  1: '#eff6ff',
+  2: '#eff6ff',
   3: '#fff7ed',
-  4: '#fef2f2'
+  4: '#fff7ed'
 };
 
 export const congestionLevels: CongestionLevel[] = [0, 1, 2, 3, 4];
@@ -52,11 +70,18 @@ export function congestionStatusLabel(level: CongestionLevel) {
 }
 
 export function congestionStatusColor(level: CongestionLevel) {
-  return isCongestedLevel(level) ? '#f97316' : '#00b010';
+  return isCongestedLevel(level) ? situationColors.attention : situationColors.normal;
 }
 
 export function congestionStatusSoftColor(level: CongestionLevel) {
-  return isCongestedLevel(level) ? '#fff7ed' : '#ecfdf5';
+  return isCongestedLevel(level) ? '#fff7ed' : '#eff6ff';
+}
+
+export function situationStatusColor(operationStatus: OperationStatus, congestionLevel: CongestionLevel) {
+  if (operationStatus === 'CLOSED') return situationColors.closed;
+  if (operationStatus === 'PAUSED' || isCongestedLevel(congestionLevel)) return situationColors.attention;
+  if (operationStatus === 'OPEN') return situationColors.open;
+  return situationColors.normal;
 }
 
 export const materialStatusLabels: Record<MaterialStatus, string> = {

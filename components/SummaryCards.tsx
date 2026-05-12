@@ -1,5 +1,5 @@
 import type { BoothWithStatus } from '@/lib/types';
-import { operationStatusLabels } from '@/lib/statusLabels';
+import { congestionStatusColor, operationStatusColor, operationStatusLabels } from '@/lib/statusLabels';
 
 type SummaryCardsProps = {
   booths: BoothWithStatus[];
@@ -11,32 +11,32 @@ export default function SummaryCards({ booths }: SummaryCardsProps) {
       label: operationStatusLabels.READY,
       value: booths.filter((booth) => booth.status.operationStatus === 'READY').length,
       hint: '운영 전',
-      color: '#0060b0'
+      color: operationStatusColor('READY')
     },
     {
       label: operationStatusLabels.OPEN,
       value: booths.filter((booth) => booth.status.operationStatus === 'OPEN').length,
       hint: '현재 운영',
-      color: '#16a34a'
+      color: operationStatusColor('OPEN')
     },
     {
       label: operationStatusLabels.PAUSED,
       value: booths.filter((booth) => booth.status.operationStatus === 'PAUSED').length,
       hint: '확인 필요',
-      color: '#f97316',
+      color: operationStatusColor('PAUSED'),
       urgent: true
     },
     {
       label: operationStatusLabels.CLOSED,
       value: booths.filter((booth) => booth.status.operationStatus === 'CLOSED').length,
       hint: '종료 부스',
-      color: '#64748b'
+      color: operationStatusColor('CLOSED')
     },
     {
       label: '혼잡',
       value: booths.filter((booth) => booth.status.congestionLevel >= 3).length,
       hint: '혼잡 상태',
-      color: '#ef4444',
+      color: congestionStatusColor(3),
       urgent: true
     }
   ];
@@ -47,7 +47,7 @@ export default function SummaryCards({ booths }: SummaryCardsProps) {
         <div
           key={item.label}
           className={`relative overflow-hidden rounded-lg border p-3 shadow-sm sm:p-4 ${
-            item.urgent && item.value > 0 ? 'border-red-200 bg-red-50' : 'border-[var(--line)] bg-white'
+            item.urgent && item.value > 0 ? 'border-orange-200 bg-orange-50' : 'border-[var(--line)] bg-white'
           }`}
         >
           <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: item.color }} />

@@ -13,6 +13,8 @@ export default function CongestionSlider({ value, disabled, onChange }: Congesti
   const congested = isCongestedLevel(value);
   const nextValue: CongestionLevel = congested ? 0 : 3;
   const activeColor = congestionStatusColor(value);
+  const normalColor = congestionStatusColor(0);
+  const congestedColor = congestionStatusColor(3);
   const activeLabel = congestionStatusLabel(value);
 
   return (
@@ -23,7 +25,7 @@ export default function CongestionSlider({ value, disabled, onChange }: Congesti
           disabled={disabled}
           onClick={() => onChange(0)}
           className="min-h-12 rounded-lg px-3 text-2xl font-black disabled:cursor-not-allowed disabled:opacity-60"
-          style={{ color: congested ? '#64748b' : '#00b010' }}
+          style={{ color: congested ? '#64748b' : normalColor }}
         >
           여유
         </button>
@@ -32,7 +34,7 @@ export default function CongestionSlider({ value, disabled, onChange }: Congesti
           disabled={disabled}
           onClick={() => onChange(3)}
           className="min-h-12 rounded-lg px-3 text-2xl font-black disabled:cursor-not-allowed disabled:opacity-60"
-          style={{ color: congested ? '#f97316' : '#64748b' }}
+          style={{ color: congested ? congestedColor : '#64748b' }}
         >
           혼잡
         </button>
