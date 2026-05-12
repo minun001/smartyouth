@@ -36,7 +36,7 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
       className={`overflow-hidden rounded-lg border shadow-sm transition ${
         booth.problem ? 'border-red-200 shadow-red-100' : 'border-[var(--line)]'
       }`}
-      style={{ backgroundColor: booth.problem ? '#fff7f7' : congestionSoftColors[status.congestionLevel] }}
+      style={{ backgroundColor: '#ffffff' }}
     >
       <button
         type="button"
