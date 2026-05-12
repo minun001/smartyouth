@@ -10,14 +10,16 @@ type FilterChipsProps = {
 
 export default function FilterChips({ active, onChange }: FilterChipsProps) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1">
+    <div className="flex gap-2 overflow-x-auto rounded-lg border border-[var(--line)] bg-white p-2 shadow-sm">
       {filterOrder.map((filter) => (
         <button
           key={filter}
           type="button"
           onClick={() => onChange(filter)}
-          className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-black ${
-            active === filter ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-700'
+          className={`min-h-11 shrink-0 rounded-md px-4 text-sm font-black transition ${
+            active === filter
+              ? 'bg-gradient-to-r from-[var(--asan-blue)] to-[var(--asan-sky)] text-white shadow-sm'
+              : 'bg-slate-50 text-slate-700 active:bg-slate-100'
           }`}
         >
           {filterLabels[filter]}

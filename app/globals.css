@@ -4,8 +4,22 @@
 
 :root {
   color-scheme: light;
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #f3f9ff;
+  --foreground: #0f2742;
+  --surface: #ffffff;
+  --ink: #0f2742;
+  --ink-soft: #51677f;
+  --asan-blue: #0060b0;
+  --asan-sky: #00a0e0;
+  --asan-green: #00b010;
+  --asan-rose: #f08090;
+  --asan-yellow: #ffd447;
+  --brand: #0060b0;
+  --brand-strong: #003f84;
+  --accent: #00a0e0;
+  --danger: #ef4444;
+  --warning: #f97316;
+  --line: #d6e7f5;
 }
 
 * {
@@ -20,7 +34,10 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--background);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(0, 160, 224, 0.16), transparent 32rem),
+    radial-gradient(circle at 92% 12%, rgba(240, 128, 144, 0.14), transparent 28rem),
+    linear-gradient(180deg, #f7fbff 0%, #eef8ff 46%, #f8fafc 100%);
   color: var(--foreground);
   font-family:
     -apple-system,
@@ -42,10 +59,21 @@ button {
   touch-action: manipulation;
 }
 
+::selection {
+  background: #ffd447;
+  color: #0f2742;
+}
+
 .safe-bottom {
   padding-bottom: calc(env(safe-area-inset-bottom) + 88px);
 }
 
 .safe-nav {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (min-width: 1024px) {
+  .safe-bottom {
+    padding-bottom: 32px;
+  }
 }

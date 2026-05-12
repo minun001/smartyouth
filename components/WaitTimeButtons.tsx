@@ -19,8 +19,8 @@ export default function WaitTimeButtons({ value, disabled, onChange }: WaitTimeB
           type="button"
           disabled={disabled}
           onClick={() => onChange(minutes)}
-          className={`min-h-12 rounded-lg border px-1 text-sm font-black disabled:cursor-not-allowed disabled:opacity-60 ${
-            value === minutes ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700'
+          className={`min-h-14 rounded-lg border px-1 text-sm font-black disabled:cursor-not-allowed disabled:opacity-60 ${
+            value === minutes ? 'border-[var(--asan-blue)] bg-[var(--asan-blue)] text-white' : 'border-slate-200 bg-white text-slate-700'
           }`}
         >
           {minutes === 30 ? '30분+' : `${minutes}분`}

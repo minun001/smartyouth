@@ -6,19 +6,58 @@ type SummaryCardsProps = {
 
 export default function SummaryCards({ booths }: SummaryCardsProps) {
   const summary = [
-    { label: '운영중', value: booths.filter((booth) => booth.status.operationStatus === 'OPEN').length, color: '#22c55e' },
-    { label: '혼잡', value: booths.filter((booth) => booth.status.congestionLevel >= 3).length, color: '#f97316' },
-    { label: '도움요청', value: booths.filter((booth) => booth.status.helpRequested).length, color: '#ef4444' },
-    { label: '마감', value: booths.filter((booth) => booth.status.operationStatus === 'CLOSED').length, color: '#64748b' }
+    {
+      label: '전체',
+      value: booths.length,
+      hint: '등록 부스',
+      color: '#0060b0'
+    },
+    {
+      label: '운영중',
+      value: booths.filter((booth) => booth.status.operationStatus === 'OPEN').length,
+      hint: `${booths.length}개 중`,
+      color: '#16a34a'
+    },
+    {
+      label: '혼잡',
+      value: booths.filter((booth) => booth.status.congestionLevel >= 3).length,
+      hint: '혼잡 이상',
+      color: '#f97316',
+      urgent: true
+    },
+    {
+      label: '도움요청',
+      value: booths.filter((booth) => booth.status.helpRequested).length,
+      hint: 'HQ 처리',
+      color: '#ef4444',
+      urgent: true
+    },
+    {
+      label: '마감',
+      value: booths.filter((booth) => booth.status.operationStatus === 'CLOSED').length,
+      hint: '종료 부스',
+      color: '#64748b'
+    }
   ];
 
   return (
-    <section className="grid grid-cols-2 gap-3">
+    <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
       {summary.map((item) => (
-        <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-sm font-extrabold text-slate-500">{item.label}</div>
-          <div className="mt-1 text-3xl font-black text-slate-950" style={{ color: item.color }}>
-            {item.value}
+        <div
+          key={item.label}
+          className={`relative overflow-hidden rounded-lg border p-4 shadow-sm ${
+            item.urgent && item.value > 0
+              ? 'border-red-200 bg-red-50'
+              : 'border-[var(--line)] bg-white'
+          }`}
+        >
+          <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: item.color }} />
+          <div className="text-sm font-black text-slate-500">{item.label}</div>
+          <div className="mt-1 flex items-end justify-between gap-2">
+            <div className="text-4xl font-black leading-none text-slate-950" style={{ color: item.color }}>
+              {item.value}
+            </div>
+            <div className="pb-1 text-xs font-black text-slate-500">{item.hint}</div>
           </div>
         </div>
       ))}

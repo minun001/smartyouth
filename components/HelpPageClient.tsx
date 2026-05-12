@@ -84,11 +84,27 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
     { status: 'IN_PROGRESS', title: '처리중' },
     { status: 'RESOLVED', title: '완료' }
   ];
+  const newCount = data?.incidents.filter((incident) => incident.status === 'NEW').length ?? 0;
+  const progressCount = data?.incidents.filter((incident) => incident.status === 'IN_PROGRESS').length ?? 0;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
-      <AppHeader title="도움 요청" lastRefresh={data?.refreshedAt} onRefresh={() => void loadStatus()} />
-      <main className="safe-bottom mx-auto max-w-3xl space-y-4 px-4 py-4">
+    <div className="min-h-screen text-slate-950">
+      <AppHeader title="도움 요청 처리 큐" lastRefresh={data?.refreshedAt} onRefresh={() => void loadStatus()} />
+      <main className="safe-bottom mx-auto max-w-6xl space-y-4 px-4 py-4 sm:py-5">
+        <section className="rounded-lg bg-gradient-to-br from-[var(--asan-blue)] via-[var(--asan-sky)] to-[var(--asan-green)] p-5 text-white shadow-[0_24px_60px_rgba(0,96,176,0.22)]">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="text-xs font-black uppercase tracking-[0.16em] text-[var(--asan-yellow)]">HQ Help Queue</div>
+              <h1 className="mt-2 text-3xl font-black leading-tight">현장 도움 요청</h1>
+              <p className="mt-2 text-sm font-bold text-white">새 요청을 놓치지 않고 처리 상태를 바로 갱신합니다.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:min-w-[240px]">
+              <QueueMetric label="새 요청" value={newCount} danger={newCount > 0} />
+              <QueueMetric label="처리중" value={progressCount} />
+            </div>
+          </div>
+        </section>
+
         {data && !data.access.hq ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-black text-red-700">
             HQ 수정 권한이 없는 링크입니다. HQ 토큰을 확인해주세요.
@@ -104,13 +120,23 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
         {data
           ? groups.map((group) => {
               const incidents = data.incidents.filter((incident) => incident.status === group.status);
+              const isNew = group.status === 'NEW';
               return (
-                <section key={group.status} className="space-y-3">
-                  <h2 className="text-lg font-black text-slate-950">
-                    {group.title} <span className="text-slate-400">{incidents.length}</span>
-                  </h2>
+                <section
+                  key={group.status}
+                  className={`space-y-3 rounded-lg border p-4 shadow-sm ${
+                    isNew && incidents.length > 0 ? 'border-red-200 bg-red-50' : 'border-[var(--line)] bg-white'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className={`text-xl font-black ${isNew ? 'text-red-700' : 'text-slate-950'}`}>{group.title}</h2>
+                    <span className={`${isNew ? 'bg-red-600' : 'bg-[var(--brand)]'} rounded-md px-3 py-1 text-sm font-black text-white`}>
+                      {incidents.length}
+                    </span>
+                  </div>
                   {incidents.length > 0 ? (
-                    incidents.map((incident) => (
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      {incidents.map((incident) => (
                       <article key={incident.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -142,13 +168,14 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                             type="button"
                             disabled={!data.access.hq || savingId === incident.id || incident.status === 'RESOLVED'}
                             onClick={() => void setIncidentStatus(incident.id, 'RESOLVED')}
-                            className="min-h-12 rounded-lg bg-slate-900 text-base font-black text-white disabled:opacity-50"
+                            className="min-h-12 rounded-lg bg-gradient-to-r from-[var(--asan-blue)] to-[var(--asan-sky)] text-base font-black text-white disabled:opacity-50"
                           >
                             완료
                           </button>
                         </div>
                       </article>
-                    ))
+                      ))}
+                    </div>
                   ) : (
                     <div className="rounded-lg bg-white p-4 text-sm font-bold text-slate-500">없음</div>
                   )}
@@ -158,6 +185,15 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
           : null}
       </main>
       <BottomNav token={token} hqMode={data?.access.hq ?? false} />
+    </div>
+  );
+}
+
+function QueueMetric({ label, value, danger }: { label: string; value: number; danger?: boolean }) {
+  return (
+    <div className={`rounded-lg p-3 ${danger ? 'bg-red-500 text-white' : 'bg-white/10 text-white'}`}>
+      <div className="text-xs font-black text-white/75">{label}</div>
+      <div className="mt-1 text-3xl font-black leading-none">{value}</div>
     </div>
   );
 }

@@ -131,95 +131,113 @@ export default function BoothControlPanel({
   }
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-soft">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-sm font-black text-slate-500">부스 {booth.boothNo}</div>
-          <h1 className="mt-1 text-2xl font-black leading-tight text-slate-950">{booth.name}</h1>
+    <section className="overflow-hidden rounded-lg border border-[var(--line)] bg-white shadow-[0_18px_48px_rgba(0,96,176,0.14)]">
+      <div className="bg-gradient-to-r from-[var(--asan-blue)] via-[var(--asan-sky)] to-[var(--asan-green)] p-4 text-white">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-black text-[var(--asan-yellow)]">부스 {booth.boothNo}</div>
+            <h1 className="mt-1 text-2xl font-black leading-tight">{booth.name}</h1>
+          </div>
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-11 shrink-0 rounded-lg bg-white/10 px-4 text-sm font-black text-white"
+            >
+              닫기
+            </button>
+          ) : null}
         </div>
-        {onClose ? (
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-11 shrink-0 rounded-lg border border-slate-200 px-4 text-sm font-black text-slate-700"
-          >
-            닫기
-          </button>
+
+        <div
+          className={`mt-4 rounded-lg px-3 py-2 text-sm font-black ${
+            saveState === 'error'
+              ? 'bg-red-500 text-white'
+              : saveState === 'saved'
+                ? 'bg-[var(--asan-yellow)] text-slate-950'
+                : 'bg-white/15 text-white'
+          }`}
+        >
+          {saveState === 'saving' ? '저장중' : null}
+          {saveState === 'saved' ? `저장됨 · ${formatTime(savedAt)}` : null}
+          {saveState === 'error' ? '저장 실패. 다시 시도해주세요.' : null}
+          {saveState === 'idle' ? `마지막 업데이트 · ${formatTime(status.updatedAt)}` : null}
+        </div>
+      </div>
+
+      <div className="p-4">
+        {!canEdit ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-black text-red-700">
+            수정 권한이 없는 링크입니다. 부스 QR을 다시 확인해주세요.
+          </div>
         ) : null}
-      </div>
 
-      {!canEdit ? (
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-black text-red-700">
-          수정 권한이 없는 링크입니다. 부스 QR을 다시 확인해주세요.
+        {status.helpRequested ? (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-black text-red-700">
+            도움 요청이 접수된 상태입니다. 해결 후 HQ 도움 요청 화면에서 완료 처리해주세요.
+          </div>
+        ) : null}
+
+        <div className="space-y-5">
+          <ControlBlock title="운영 상태">
+            <StatusSegmentedControl
+              value={status.operationStatus}
+              disabled={!canEdit}
+              onChange={(operationStatus) => void patchStatus({ operationStatus })}
+            />
+          </ControlBlock>
+
+          <ControlBlock title="혼잡도">
+            <CongestionSlider
+              value={status.congestionLevel}
+              disabled={!canEdit}
+              onChange={(congestionLevel) => void patchStatus({ congestionLevel })}
+            />
+          </ControlBlock>
+
+          <ControlBlock title="대기 시간">
+            <WaitTimeButtons
+              value={status.waitMinutes}
+              disabled={!canEdit}
+              onChange={(waitMinutes) => void patchStatus({ waitMinutes })}
+            />
+          </ControlBlock>
+
+          <ControlBlock title="재료 상태">
+            <MaterialButtons
+              value={status.materialStatus}
+              disabled={!canEdit}
+              onChange={(materialStatus) => void patchStatus({ materialStatus })}
+            />
+          </ControlBlock>
+
+          <ControlBlock title="도움 요청">
+            <HelpRequestButtons activeType={status.helpType} disabled={!canEdit} onRequest={(type) => void requestHelp(type)} />
+          </ControlBlock>
+
+          <ControlBlock title="메모">
+            <textarea
+              value={memo}
+              disabled={!canEdit}
+              onChange={(event) => setMemo(event.target.value)}
+              onBlur={() => {
+                if (memo !== (status.memo ?? '')) void patchStatus({ memo });
+              }}
+              rows={3}
+              maxLength={300}
+              placeholder="짧게 입력"
+              className="min-h-24 w-full rounded-lg border-slate-200 text-base font-semibold text-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
+            />
+            <button
+              type="button"
+              disabled={!canEdit}
+              onClick={() => void patchStatus({ memo })}
+              className="mt-2 min-h-12 w-full rounded-lg bg-gradient-to-r from-[var(--asan-blue)] to-[var(--asan-sky)] text-base font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              메모 저장
+            </button>
+          </ControlBlock>
         </div>
-      ) : null}
-
-      <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm font-black text-slate-600">
-        {saveState === 'saving' ? '저장중' : null}
-        {saveState === 'saved' ? `저장됨 · ${formatTime(savedAt)}` : null}
-        {saveState === 'error' ? '저장 실패. 다시 시도해주세요.' : null}
-        {saveState === 'idle' ? `마지막 업데이트 · ${formatTime(status.updatedAt)}` : null}
-      </div>
-
-      <div className="mt-5 space-y-5">
-        <ControlBlock title="운영 상태">
-          <StatusSegmentedControl
-            value={status.operationStatus}
-            disabled={!canEdit}
-            onChange={(operationStatus) => void patchStatus({ operationStatus })}
-          />
-        </ControlBlock>
-
-        <ControlBlock title="혼잡도">
-          <CongestionSlider
-            value={status.congestionLevel}
-            disabled={!canEdit}
-            onChange={(congestionLevel) => void patchStatus({ congestionLevel })}
-          />
-        </ControlBlock>
-
-        <ControlBlock title="대기 시간">
-          <WaitTimeButtons
-            value={status.waitMinutes}
-            disabled={!canEdit}
-            onChange={(waitMinutes) => void patchStatus({ waitMinutes })}
-          />
-        </ControlBlock>
-
-        <ControlBlock title="재료 상태">
-          <MaterialButtons
-            value={status.materialStatus}
-            disabled={!canEdit}
-            onChange={(materialStatus) => void patchStatus({ materialStatus })}
-          />
-        </ControlBlock>
-
-        <ControlBlock title="도움 요청">
-          <HelpRequestButtons activeType={status.helpType} disabled={!canEdit} onRequest={(type) => void requestHelp(type)} />
-        </ControlBlock>
-
-        <ControlBlock title="메모">
-          <textarea
-            value={memo}
-            disabled={!canEdit}
-            onChange={(event) => setMemo(event.target.value)}
-            onBlur={() => {
-              if (memo !== (status.memo ?? '')) void patchStatus({ memo });
-            }}
-            rows={3}
-            maxLength={300}
-            placeholder="짧게 입력"
-            className="min-h-24 w-full rounded-lg border-slate-200 text-base font-semibold text-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
-          />
-          <button
-            type="button"
-            disabled={!canEdit}
-            onClick={() => void patchStatus({ memo })}
-            className="mt-2 min-h-12 w-full rounded-lg bg-slate-900 text-base font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            메모 저장
-          </button>
-        </ControlBlock>
       </div>
     </section>
   );

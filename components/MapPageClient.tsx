@@ -35,14 +35,16 @@ export default function MapPageClient() {
   }, [loadStatus]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
-      <AppHeader title="지도" lastRefresh={data?.refreshedAt} onRefresh={() => void loadStatus()} />
-      <main className="safe-bottom mx-auto max-w-3xl space-y-4 px-4 py-4">
-        {error ? <div className="rounded-lg bg-red-50 p-4 text-sm font-black text-red-700">{error}</div> : null}
+    <div className="min-h-screen text-slate-950">
+      <AppHeader title="현장 지도" lastRefresh={data?.refreshedAt} onRefresh={() => void loadStatus()} />
+      <main className="h-[calc(100dvh-76px)] overflow-hidden bg-slate-100">
+        {error ? <div className="m-4 rounded-lg bg-red-50 p-4 text-sm font-black text-red-700">{error}</div> : null}
         {data ? (
-          <MapView booths={data.booths} />
+          <MapView booths={data.booths} fullScreen showProblemList={false} />
         ) : (
-          <div className="rounded-lg bg-white p-6 text-center text-base font-black text-slate-500">불러오는 중</div>
+          <div className="flex h-full items-center justify-center bg-white text-base font-black text-slate-500">
+            불러오는 중
+          </div>
         )}
       </main>
       <BottomNav />

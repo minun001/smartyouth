@@ -11,7 +11,7 @@ type CongestionSliderProps = {
 
 export default function CongestionSlider({ value, disabled, onChange }: CongestionSliderProps) {
   return (
-    <div className="rounded-lg bg-white p-3">
+    <div className="rounded-lg border border-slate-200 bg-white p-3">
       <div className="mb-3 flex items-end justify-between gap-3">
         <div>
           <div className="text-sm font-extrabold text-slate-500">혼잡도</div>
@@ -32,7 +32,7 @@ export default function CongestionSlider({ value, disabled, onChange }: Congesti
         className="h-4 w-full appearance-none rounded-full disabled:opacity-60"
         style={{
           accentColor: congestionColors[value],
-          background: 'linear-gradient(90deg, #22c55e, #84cc16, #facc15, #f97316, #ef4444)'
+          background: 'linear-gradient(90deg, var(--asan-green), var(--asan-sky), var(--asan-yellow), #f97316, #ef4444)'
         }}
       />
       <div className="mt-3 grid grid-cols-5 gap-1">
@@ -42,7 +42,7 @@ export default function CongestionSlider({ value, disabled, onChange }: Congesti
             type="button"
             disabled={disabled}
             onClick={() => onChange(level)}
-            className={`min-h-11 rounded-md px-1 text-[11px] font-black disabled:cursor-not-allowed disabled:opacity-60 ${
+            className={`min-h-12 rounded-md px-1 text-[11px] font-black disabled:cursor-not-allowed disabled:opacity-60 ${
               value === level ? 'text-white' : 'bg-slate-100 text-slate-700'
             }`}
             style={value === level ? { backgroundColor: congestionColors[level] } : undefined}

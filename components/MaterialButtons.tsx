@@ -18,12 +18,12 @@ export default function MaterialButtons({ value, disabled, onChange }: MaterialB
           type="button"
           disabled={disabled}
           onClick={() => onChange(status)}
-          className={`min-h-12 rounded-lg border px-3 text-base font-black disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`min-h-14 rounded-lg border px-3 text-base font-black disabled:cursor-not-allowed disabled:opacity-60 ${
             value === status
               ? status === 'OK'
-                ? 'border-green-500 bg-green-500 text-white'
+                ? 'border-[var(--asan-green)] bg-[var(--asan-green)] text-white'
                 : status === 'LOW'
-                  ? 'border-yellow-400 bg-yellow-300 text-slate-950'
+                  ? 'border-orange-400 bg-orange-400 text-slate-950'
                   : 'border-red-500 bg-red-500 text-white'
               : 'border-slate-200 bg-white text-slate-700'
           }`}

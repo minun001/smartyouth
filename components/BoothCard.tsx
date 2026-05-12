@@ -22,22 +22,35 @@ type BoothCardProps = {
 export default function BoothCard({ booth, editable, defaultExpanded = false, onEdit }: BoothCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const status = booth.status;
+  const priorityColor = booth.problem
+    ? '#ef4444'
+    : status.operationStatus === 'OPEN'
+      ? '#16a34a'
+      : status.operationStatus === 'PAUSED'
+        ? '#f97316'
+        : status.operationStatus === 'CLOSED'
+          ? '#64748b'
+          : '#0060b0';
 
   return (
     <article
-      className={`overflow-hidden rounded-lg border shadow-sm ${
-        booth.problem ? 'border-red-200' : 'border-slate-200'
+      className={`overflow-hidden rounded-lg border shadow-sm transition ${
+        booth.problem ? 'border-red-200 shadow-red-100' : 'border-[var(--line)]'
       }`}
-      style={{ backgroundColor: congestionSoftColors[status.congestionLevel] }}
+      style={{ backgroundColor: booth.problem ? '#fff7f7' : congestionSoftColors[status.congestionLevel] }}
     >
       <button
         type="button"
         aria-expanded={expanded}
         onClick={() => setExpanded((current) => !current)}
-        className="flex min-h-20 w-full items-center justify-between gap-3 p-4 text-left active:bg-white/40"
+        className="relative flex min-h-20 w-full items-center justify-between gap-3 p-4 text-left active:bg-white/50"
       >
+        <span className="absolute bottom-0 left-0 top-0 w-1.5" style={{ backgroundColor: priorityColor }} />
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-950 text-lg font-black text-white">
+          <span
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-lg font-black text-white shadow-sm"
+            style={{ backgroundColor: priorityColor }}
+          >
             {booth.boothNo}
           </span>
           <div className="min-w-0">
@@ -49,12 +62,18 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
                 </span>
               ) : null}
             </div>
-            <div className="mt-1 flex items-center gap-2 text-sm font-extrabold text-slate-600">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm font-extrabold text-slate-600">
               <span>{operationStatusLabels[status.operationStatus]}</span>
               <span>·</span>
               <span className="font-black" style={{ color: congestionColors[status.congestionLevel] }}>
                 {congestionLabels[status.congestionLevel]}
               </span>
+              {status.helpRequested ? (
+                <>
+                  <span>·</span>
+                  <span className="font-black text-red-600">도움요청</span>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
@@ -65,21 +84,21 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
         <div className="border-t border-white/80 px-4 pb-4 pt-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-xs font-black text-slate-500">{boothTypeLabels[booth.type]}</div>
+              <div className="text-xs font-black text-slate-500">{boothTypeLabels[booth.type]} 부스</div>
               <h2 className="mt-1 text-lg font-black leading-snug text-slate-950">{booth.name}</h2>
             </div>
             {editable ? (
               <button
                 type="button"
                 onClick={() => onEdit?.(booth)}
-                className="min-h-11 shrink-0 rounded-lg bg-slate-900 px-4 text-sm font-black text-white"
+                className="min-h-11 shrink-0 rounded-lg bg-gradient-to-r from-[var(--asan-blue)] to-[var(--asan-sky)] px-4 text-sm font-black text-white"
               >
                 수정
               </button>
             ) : null}
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <StatusPill label="상태" value={operationStatusLabels[status.operationStatus]} />
             <StatusPill
               label="혼잡"
@@ -99,11 +118,15 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
           {booth.problemReasons.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-2">
               {booth.problemReasons.map((reason) => (
-                <span key={reason} className="rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">
+                <span key={reason} className="rounded-md bg-red-600 px-3 py-1 text-xs font-black text-white">
                   {reason}
                 </span>
               ))}
             </div>
+          ) : null}
+
+          {status.memo ? (
+            <div className="mt-3 rounded-md bg-white/80 p-3 text-sm font-bold leading-6 text-slate-700">{status.memo}</div>
           ) : null}
 
           <div className="mt-3 text-xs font-bold text-slate-500">업데이트 {formatRelativeUpdatedAt(status.updatedAt)}</div>

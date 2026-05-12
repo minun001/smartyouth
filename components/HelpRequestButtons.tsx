@@ -18,7 +18,7 @@ export default function HelpRequestButtons({ activeType, disabled, onRequest }: 
           type="button"
           disabled={disabled}
           onClick={() => onRequest(type)}
-          className={`min-h-12 rounded-lg border px-3 text-base font-black disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`min-h-14 rounded-lg border px-3 text-base font-black disabled:cursor-not-allowed disabled:opacity-60 ${
             activeType === type ? 'border-red-500 bg-red-500 text-white' : 'border-slate-200 bg-white text-slate-700'
           }`}
         >

@@ -61,15 +61,15 @@ export default function BoothPageClient({ boothNo, token }: BoothPageClientProps
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
+    <div className="min-h-screen text-slate-950">
       <AppHeader
-        title={booth ? `부스 ${booth.boothNo}` : '부스'}
+        title={booth ? `부스 ${booth.boothNo} 운영 패널` : '부스 운영 패널'}
         lastRefresh={data?.refreshedAt}
         onRefresh={() => void loadStatus()}
         rightLabel={data?.mode === 'demo' ? '데모' : undefined}
       />
 
-      <main className="safe-bottom mx-auto max-w-3xl space-y-4 px-4 py-4">
+      <main className="safe-bottom mx-auto max-w-3xl space-y-4 px-4 py-4 sm:py-5">
         {error ? <div className="rounded-lg bg-red-50 p-4 text-sm font-black text-red-700">{error}</div> : null}
 
         {!data ? (
