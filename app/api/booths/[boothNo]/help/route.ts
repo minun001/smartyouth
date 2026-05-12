@@ -32,10 +32,12 @@ export async function POST(request: Request, context: { params: Promise<{ boothN
     }
 
     const memo = typeof body.memo === 'string' ? body.memo.slice(0, 300) : undefined;
-    const forceCreate = body.forceCreate === true;
-    const incident = await createOrUpdateIncident(boothNo, type, memo, access.scope === 'hq' ? 'hq' : `booth:${boothNo}`, {
-      forceCreate
-    });
+    const incident = await createOrUpdateIncident(
+      boothNo,
+      type,
+      memo,
+      access.scope === 'hq' ? 'hq' : `booth:${boothNo}`
+    );
     return NextResponse.json({ incident, savedAt: new Date().toISOString() });
   } catch (error) {
     return NextResponse.json(

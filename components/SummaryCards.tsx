@@ -41,23 +41,21 @@ export default function SummaryCards({ booths }: SummaryCardsProps) {
   ];
 
   return (
-    <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+    <section className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5">
       {summary.map((item) => (
         <div
           key={item.label}
-          className={`relative overflow-hidden rounded-lg border p-4 shadow-sm ${
-            item.urgent && item.value > 0
-              ? 'border-red-200 bg-red-50'
-              : 'border-[var(--line)] bg-white'
+          className={`relative overflow-hidden rounded-lg border p-3 shadow-sm sm:p-4 ${
+            item.urgent && item.value > 0 ? 'border-red-200 bg-red-50' : 'border-[var(--line)] bg-white'
           }`}
         >
           <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: item.color }} />
           <div className="text-sm font-black text-slate-500">{item.label}</div>
-          <div className="mt-1 flex items-end justify-between gap-2">
-            <div className="text-4xl font-black leading-none text-slate-950" style={{ color: item.color }}>
+          <div className="mt-1">
+            <div className="text-3xl font-black leading-none text-slate-950 sm:text-4xl" style={{ color: item.color }}>
               {item.value}
             </div>
-            <div className="pb-1 text-xs font-black text-slate-500">{item.hint}</div>
+            <div className="mt-1 text-xs font-black text-slate-500">{item.hint}</div>
           </div>
         </div>
       ))}

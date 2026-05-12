@@ -105,7 +105,6 @@ export default function BoothControlPanel({
         await createStaticHelp(booth.boothNo, token, type, memo);
         setSaveState('saved');
         setSavedAt(new Date().toISOString());
-        window.dispatchEvent(new CustomEvent('smartyouth-help-created'));
         onSaved?.();
       } catch {
         setSaveState('error');

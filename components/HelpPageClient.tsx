@@ -1,19 +1,11 @@
 'use client';
 
-import {
-  type FormEvent,
-  type PointerEvent as ReactPointerEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState
-} from 'react';
+import { type FormEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppHeader from './AppHeader';
 import BottomNav from './BottomNav';
 import { appPath, isStaticDemo } from '@/lib/clientConfig';
 import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
-import { formatTime, helpTypeLabels, helpTypeOrder } from '@/lib/statusLabels';
+import { formatTime, helpTypeLabels, helpTypeOrder, incidentStatusLabels } from '@/lib/statusLabels';
 import {
   createStaticHelp,
   getInitialStaticStatus,
@@ -52,7 +44,9 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
       const params = new URLSearchParams();
       if (token) params.set('t', token);
-      const response = await fetch(`${appPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, { cache: 'no-store' });
+      const response = await fetch(`${appPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
+        cache: 'no-store'
+      });
       if (!response.ok) {
         setError('도움 요청을 불러오지 못했습니다.');
         return;
@@ -70,6 +64,12 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
     const id = window.setInterval(() => void loadStatus(), STATUS_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(id);
   }, [loadStatus]);
+
+  useEffect(() => {
+    if (!requestSavedMessage) return undefined;
+    const id = window.setTimeout(() => setRequestSavedMessage(null), 3500);
+    return () => window.clearTimeout(id);
+  }, [requestSavedMessage]);
 
   const boothNameByNo = useMemo(() => {
     return new Map(data?.booths.map((booth) => [booth.boothNo, booth.name]) ?? []);
@@ -114,7 +114,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
     try {
       if (isStaticDemo) {
-        const result = await createStaticHelp(boothNo, token, requestType, memo, { forceCreate: true });
+        const result = await createStaticHelp(boothNo, token, requestType, memo);
         setRequestSavedMessage(`등록됨 · ${formatTime(result.savedAt)}`);
         setRequestMemo('');
         await loadStatus();
@@ -125,14 +125,13 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
       const response = await fetch(`${appPath(`/api/booths/${boothNo}/help`)}${suffix}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: requestType, memo, forceCreate: true })
+        body: JSON.stringify({ type: requestType, memo })
       });
 
-      if (!response.ok) {
-        throw new Error('Help request failed.');
-      }
+      if (!response.ok) throw new Error('Help request failed.');
 
       const result = (await response.json()) as { savedAt?: string };
+      window.dispatchEvent(new CustomEvent('smartyouth-help-created'));
       setRequestSavedMessage(`등록됨 · ${formatTime(result.savedAt)}`);
       setRequestMemo('');
       await loadStatus();
@@ -144,50 +143,36 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
   }
 
   async function setIncidentStatus(id: string, status: IncidentStatus) {
-    if (!data?.access.hq) return;
+    if (!data?.access.hq || savingId === id) return;
     setSavingId(id);
 
-    if (isStaticDemo) {
-      try {
+    try {
+      if (isStaticDemo) {
         await patchStaticIncident(token, id, status);
         await loadStatus();
-      } catch {
-        setError('저장 실패. 다시 시도해주세요.');
-      } finally {
-        setSavingId(null);
+        return;
       }
-      return;
+
+      const suffix = token ? `?t=${encodeURIComponent(token)}` : '';
+      const response = await fetch(`${appPath(`/api/incidents/${id}`)}${suffix}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+
+      if (!response.ok) throw new Error('Incident update failed.');
+      await loadStatus();
+    } catch {
+      setError('처리 실패. 다시 시도해주세요.');
+    } finally {
+      setSavingId(null);
     }
-
-    const suffix = token ? `?t=${encodeURIComponent(token)}` : '';
-    const response = await fetch(`${appPath(`/api/incidents/${id}`)}${suffix}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
-    });
-    setSavingId(null);
-
-    if (!response.ok) {
-      setError('저장 실패. 다시 시도해주세요.');
-      return;
-    }
-
-    await loadStatus();
   }
 
   function isCoordinateOverCompleteZone(clientX: number, clientY: number) {
     const rect = completeZoneRef.current?.getBoundingClientRect();
     if (!rect) return false;
-    return (
-      clientX >= rect.left &&
-      clientX <= rect.right &&
-      clientY >= rect.top &&
-      clientY <= rect.bottom
-    );
-  }
-
-  function isPointerOverCompleteZone(event: ReactPointerEvent) {
-    return isCoordinateOverCompleteZone(event.clientX, event.clientY);
+    return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
   }
 
   function startDrag(event: ReactPointerEvent<HTMLElement>, incident: Incident) {
@@ -197,46 +182,15 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
     setIsOverCompleteZone(false);
   }
 
-  function moveDrag(event: ReactPointerEvent<HTMLElement>) {
-    if (!draggingId) return;
-    event.preventDefault();
-    setIsOverCompleteZone(isPointerOverCompleteZone(event));
-  }
-
-  function cancelDrag(event: ReactPointerEvent<HTMLElement>) {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setDraggingId(null);
-    setIsOverCompleteZone(false);
-  }
-
-  function endDrag(event: ReactPointerEvent<HTMLElement>, incident: Incident) {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-
-    const shouldComplete = draggingId === incident.id && isCoordinateOverCompleteZone(event.clientX, event.clientY);
-    setDraggingId(null);
-    setIsOverCompleteZone(false);
-
-    if (shouldComplete) {
-      void setIncidentStatus(incident.id, 'RESOLVED');
-    }
-  }
-
   useEffect(() => {
     if (!draggingId) return undefined;
 
     const finishDrag = (clientX: number, clientY: number) => {
-      const shouldComplete = isCoordinateOverCompleteZone(clientX, clientY);
       const incidentId = draggingId;
+      const shouldComplete = isCoordinateOverCompleteZone(clientX, clientY);
       setDraggingId(null);
       setIsOverCompleteZone(false);
-
-      if (shouldComplete) {
-        void setIncidentStatus(incidentId, 'RESOLVED');
-      }
+      if (shouldComplete) void setIncidentStatus(incidentId, 'RESOLVED');
     };
 
     const handlePointerMove = (event: PointerEvent) => {
@@ -244,14 +198,15 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
       setIsOverCompleteZone(isCoordinateOverCompleteZone(event.clientX, event.clientY));
     };
     const handlePointerUp = (event: PointerEvent) => finishDrag(event.clientX, event.clientY);
-    const handleMouseMove = (event: MouseEvent) => setIsOverCompleteZone(isCoordinateOverCompleteZone(event.clientX, event.clientY));
-    const handleMouseUp = (event: MouseEvent) => finishDrag(event.clientX, event.clientY);
+    const handlePointerCancel = () => {
+      setDraggingId(null);
+      setIsOverCompleteZone(false);
+    };
     const handleTouchMove = (event: TouchEvent) => {
       const touch = event.touches[0];
-      if (touch) {
-        event.preventDefault();
-        setIsOverCompleteZone(isCoordinateOverCompleteZone(touch.clientX, touch.clientY));
-      }
+      if (!touch) return;
+      event.preventDefault();
+      setIsOverCompleteZone(isCoordinateOverCompleteZone(touch.clientX, touch.clientY));
     };
     const handleTouchEnd = (event: TouchEvent) => {
       const touch = event.changedTouches[0];
@@ -260,16 +215,14 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
     window.addEventListener('pointermove', handlePointerMove, { passive: false });
     window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('pointercancel', handlePointerCancel);
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd);
 
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('pointercancel', handlePointerCancel);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
     };
@@ -280,17 +233,19 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
   return (
     <div className="min-h-screen text-slate-950">
-      <AppHeader title="도움 요청 처리 큐" lastRefresh={data?.refreshedAt} onRefresh={() => void loadStatus()} />
+      <AppHeader title="도움 요청 처리" lastRefresh={data?.refreshedAt} onRefresh={() => void loadStatus()} />
       <main className="safe-bottom mx-auto max-w-6xl space-y-4 px-4 py-4 sm:py-5">
         <section className="rounded-lg bg-gradient-to-br from-[var(--asan-blue)] via-[var(--asan-sky)] to-[var(--asan-green)] p-5 text-white shadow-[0_24px_60px_rgba(0,96,176,0.22)]">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <div className="text-xs font-black uppercase tracking-[0.16em] text-[var(--asan-yellow)]">HQ Help Queue</div>
               <h1 className="mt-2 text-3xl font-black leading-tight">현장 도움 요청</h1>
-              <p className="mt-2 text-sm font-bold text-white">부스 번호와 내용을 등록하고 완료까지 한 화면에서 처리합니다.</p>
+              <p className="mt-2 text-sm font-bold text-white">
+                부스 번호와 내용을 등록하고, 해결된 요청은 완료 영역으로 끌어 옮깁니다.
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:min-w-[240px]">
-              <QueueMetric label="처리할 일" value={activeCount} danger={activeCount > 0} />
+              <QueueMetric label="처리할 요청" value={activeCount} danger={activeCount > 0} />
               <QueueMetric label="완료" value={resolvedCount} />
             </div>
           </div>
@@ -373,7 +328,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                                 : 'bg-sky-50 text-[var(--brand-strong)]'
                             }`}
                           >
-                            {incident.status === 'NEW' ? '접수' : '처리 중'}
+                            {incidentStatusLabels[incident.status]}
                           </span>
                           <span>요청 {formatTime(incident.createdAt)}</span>
                         </div>
@@ -383,9 +338,6 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                           tabIndex={canHandle ? 0 : -1}
                           aria-label={`부스 ${incident.boothNo} 도움 요청 완료 처리`}
                           onPointerDown={(event) => startDrag(event, incident)}
-                          onPointerMove={moveDrag}
-                          onPointerUp={(event) => endDrag(event, incident)}
-                          onPointerCancel={cancelDrag}
                           onKeyDown={(event) => {
                             if (canHandle && (event.key === 'Enter' || event.key === ' ')) {
                               event.preventDefault();
@@ -398,7 +350,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                               : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
                           }`}
                         >
-                          <span>{savingId === incident.id ? '처리 중' : '잡고 끌기'}</span>
+                          <span>{savingId === incident.id ? '처리 중' : '끌고 놓기'}</span>
                           <span className="rounded-md bg-white px-3 py-1 text-sm">완료</span>
                         </div>
 
@@ -433,7 +385,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
             <div
               ref={completeZoneRef}
-              className={`sticky bottom-[calc(env(safe-area-inset-bottom)+88px)] z-30 rounded-lg border-2 border-dashed p-4 text-center shadow-[0_18px_48px_rgba(15,23,42,0.18)] transition ${
+              className={`sticky bottom-[calc(env(safe-area-inset-bottom)+var(--bottom-nav-height)+8px)] z-30 rounded-lg border-2 border-dashed p-4 text-center shadow-[0_18px_48px_rgba(15,23,42,0.18)] transition ${
                 isOverCompleteZone
                   ? 'border-emerald-500 bg-emerald-500 text-white'
                   : draggingId
@@ -442,7 +394,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
               }`}
             >
               <div className="text-lg font-black">{isOverCompleteZone ? '놓으면 완료' : '완료 영역'}</div>
-              <div className="mt-1 text-xs font-bold opacity-80">요청 카드를 이곳으로 끌어놓기</div>
+              <div className="mt-1 text-xs font-bold opacity-80">요청 카드를 아래로 끌어 옮기기</div>
             </div>
 
             <section className="space-y-3 rounded-lg border border-[var(--line)] bg-white p-4 shadow-sm">
@@ -468,7 +420,9 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-lg bg-slate-50 p-4 text-sm font-bold text-slate-500">아직 완료된 요청이 없습니다.</div>
+                <div className="rounded-lg bg-slate-50 p-4 text-sm font-bold text-slate-500">
+                  아직 완료된 요청이 없습니다.
+                </div>
               )}
             </section>
           </>
@@ -542,9 +496,7 @@ function HelpRequestForm({
                   disabled={!canSubmit || saving}
                   onClick={() => onHelpTypeChange(type)}
                   className={`min-h-12 rounded-lg border px-2 text-sm font-black disabled:cursor-not-allowed disabled:opacity-60 ${
-                    helpType === type
-                      ? 'border-red-500 bg-red-500 text-white'
-                      : 'border-slate-200 bg-white text-slate-700'
+                    helpType === type ? 'border-red-500 bg-red-500 text-white' : 'border-slate-200 bg-white text-slate-700'
                   }`}
                 >
                   {helpTypeLabels[type]}

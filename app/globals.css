@@ -20,6 +20,8 @@
   --danger: #ef4444;
   --warning: #f97316;
   --line: #d6e7f5;
+  --app-header-height: 76px;
+  --bottom-nav-height: 80px;
 }
 
 * {
@@ -65,9 +67,17 @@ button {
 }
 
 .safe-bottom {
-  padding-bottom: calc(env(safe-area-inset-bottom) + 152px);
+  padding-bottom: calc(env(safe-area-inset-bottom) + var(--bottom-nav-height) + 48px);
 }
 
 .safe-nav {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

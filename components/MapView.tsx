@@ -39,10 +39,9 @@ type Point = {
 
 const MAP_IMAGE_WIDTH = 1135;
 const MAP_IMAGE_HEIGHT = 710;
-const MIN_ZOOM = 0.72;
+const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 3.2;
 const MARKER_SIZE = 44;
-const MAP_BOTTOM_INSET = 116;
 const BOOTH_POSITION_OVERRIDES: Record<number, Point> = {
   8: { x: 33.0, y: 64.8 }
 };
@@ -56,7 +55,7 @@ function getFitScale(size: ViewportSize) {
     return 1;
   }
 
-  return clamp(size.width / MAP_IMAGE_WIDTH, MIN_ZOOM, 1);
+  return clamp(Math.min(size.width / MAP_IMAGE_WIDTH, size.height / MAP_IMAGE_HEIGHT), MIN_ZOOM, 1);
 }
 
 function constrainTransform(transform: MapTransform, size: ViewportSize): MapTransform {
@@ -68,15 +67,15 @@ function constrainTransform(transform: MapTransform, size: ViewportSize): MapTra
   const scaledWidth = MAP_IMAGE_WIDTH * scale;
   const scaledHeight = MAP_IMAGE_HEIGHT * scale;
   const centeredX = (size.width - scaledWidth) / 2;
-  const centeredY = Math.max(12, (size.height - MAP_BOTTOM_INSET - scaledHeight) / 2);
+  const centeredY = (size.height - scaledHeight) / 2;
   const x =
     scaledWidth <= size.width
       ? centeredX
-      : clamp(transform.x, size.width - scaledWidth - MARKER_SIZE, MARKER_SIZE);
+      : clamp(transform.x, size.width - scaledWidth - MARKER_SIZE / 2, MARKER_SIZE / 2);
   const y =
-    scaledHeight <= size.height - MAP_BOTTOM_INSET
+    scaledHeight <= size.height
       ? centeredY
-      : clamp(transform.y, size.height - MAP_BOTTOM_INSET - scaledHeight - MARKER_SIZE, MARKER_SIZE);
+      : clamp(transform.y, size.height - scaledHeight - MARKER_SIZE / 2, MARKER_SIZE / 2);
 
   return { scale, x, y };
 }
@@ -415,9 +414,9 @@ export default function MapView({
                 onClick={resetTransform}
                 disabled={!canReset}
                 className="min-h-11 px-3 text-xs font-black text-slate-700 disabled:text-slate-300"
-                aria-label="지도 다시 보기"
+                aria-label="지도 전체 보기"
               >
-                Reset
+                전체
               </button>
             </div>
           </div>
@@ -504,7 +503,7 @@ function SelectedBoothFloat({
   return (
     <div
       data-map-panel
-      className="pointer-events-none absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+92px)] z-30 mx-auto max-w-lg"
+      className="pointer-events-none absolute inset-x-3 bottom-3 z-30 mx-auto max-w-lg"
     >
       <article className="pointer-events-auto rounded-lg border border-slate-200 bg-white p-3 shadow-[0_18px_48px_rgba(15,23,42,0.24)]">
         <div className="flex items-start justify-between gap-2">

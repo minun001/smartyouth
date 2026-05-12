@@ -56,8 +56,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
         return;
       }
 
-      const next = (await response.json()) as ClientStatusResponse;
-      setData(next);
+      setData((await response.json()) as ClientStatusResponse);
       setError(null);
     } catch {
       setError('상황을 불러오지 못했습니다. 네트워크 상태를 확인해주세요.');
@@ -72,13 +71,16 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
     return () => window.clearInterval(id);
   }, [loadStatus]);
 
+  useEffect(() => {
+    if (!bulkSavedMessage) return undefined;
+    const id = window.setTimeout(() => setBulkSavedMessage(null), 3500);
+    return () => window.clearTimeout(id);
+  }, [bulkSavedMessage]);
+
   const canEdit = mode === 'hq' && Boolean(data?.access.hq);
   const selectedBooth = data?.booths.find((booth) => booth.boothNo === selectedBoothNo);
   const problemBooths = useMemo(() => data?.booths.filter((booth) => booth.problem) ?? [], [data]);
-  const helpCount = useMemo(
-    () => data?.booths.filter((booth) => booth.status.helpRequested).length ?? 0,
-    [data]
-  );
+  const helpCount = useMemo(() => data?.booths.filter((booth) => booth.status.helpRequested).length ?? 0, [data]);
   const congestedCount = useMemo(
     () => data?.booths.filter((booth) => booth.status.congestionLevel >= 3).length ?? 0,
     [data]
@@ -111,9 +113,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
       if (!current) return current;
       return {
         ...current,
-        booths: current.booths.map((booth) =>
-          booth.boothNo === status.boothNo ? { ...booth, status } : booth
-        )
+        booths: current.booths.map((booth) => (booth.boothNo === status.boothNo ? { ...booth, status } : booth))
       };
     });
   }
@@ -129,9 +129,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
       if (isStaticDemo) {
         const result = await patchStaticAllOperationStatuses(token, operationStatus);
         setData(getStaticStatus(token));
-        setBulkSavedMessage(
-          `전체 ${operationStatus === 'OPEN' ? '운영중' : '마감'}으로 변경됨 · ${formatTime(result.savedAt)}`
-        );
+        setBulkSavedMessage(`전체 ${operationStatus === 'OPEN' ? '운영중' : '마감'}으로 변경됨 · ${formatTime(result.savedAt)}`);
         return;
       }
 
@@ -144,15 +142,11 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
         body: JSON.stringify({ operationStatus })
       });
 
-      if (!response.ok) {
-        throw new Error('Bulk update failed.');
-      }
+      if (!response.ok) throw new Error('Bulk update failed.');
 
       const result = (await response.json()) as { savedAt?: string };
       await loadStatus();
-      setBulkSavedMessage(
-        `전체 ${operationStatus === 'OPEN' ? '운영중' : '마감'}으로 변경됨 · ${formatTime(result.savedAt)}`
-      );
+      setBulkSavedMessage(`전체 ${operationStatus === 'OPEN' ? '운영중' : '마감'}으로 변경됨 · ${formatTime(result.savedAt)}`);
     } catch {
       setError('일괄 변경에 실패했습니다. 다시 시도해주세요.');
     } finally {
@@ -173,14 +167,14 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
       <main
         className={
           isMapView
-            ? 'h-[calc(100dvh-76px)] overflow-hidden bg-slate-100'
+            ? 'flex h-[calc(100dvh-var(--app-header-height))] overflow-hidden bg-slate-100 pb-[calc(env(safe-area-inset-bottom)+var(--bottom-nav-height))]'
             : 'safe-bottom mx-auto max-w-6xl space-y-4 px-4 py-4 sm:py-5'
         }
       >
         {mode === 'hq' && data && !data.access.hq ? (
           <section className="m-4 rounded-lg border border-red-200 bg-white p-5 shadow-sm">
             <div className="text-sm font-black text-red-600">수정 권한 없음</div>
-            <h1 className="mt-2 text-2xl font-black leading-tight text-slate-950">운영본부 전용 링크입니다.</h1>
+            <h1 className="mt-2 text-2xl font-black leading-tight text-slate-950">운영본부 전용 링크입니다</h1>
             <p className="mt-3 text-sm font-bold leading-6 text-slate-600">
               HQ 화면은 전달받은 운영본부 링크로 접속해야 수정할 수 있습니다. 주소 끝에 HQ 토큰이 포함된
               `/hq?t=...` 링크인지 확인해주세요.
@@ -190,7 +184,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                 href={appPath('/hq?t=demo-hq')}
                 className="mt-4 flex min-h-12 items-center justify-center rounded-lg bg-slate-900 text-base font-black text-white"
               >
-                HQ 화면 열기
+                데모 HQ로 열기
               </a>
             ) : null}
           </section>
@@ -206,7 +200,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
           <div
             className={
               isMapView
-                ? 'flex h-full items-center justify-center bg-white text-base font-black text-slate-500'
+                ? 'flex h-full flex-1 items-center justify-center bg-white text-base font-black text-slate-500'
                 : 'rounded-lg bg-white p-6 text-center text-base font-black text-slate-500'
             }
           >
@@ -385,6 +379,12 @@ function BulkOperationControls({
 }) {
   const disabled = !canEdit || Boolean(saving);
 
+  function confirmAndChange(operationStatus: OperationStatus) {
+    const label = operationStatus === 'OPEN' ? '운영중' : '마감';
+    if (!window.confirm(`전체 ${totalCount}개 부스를 ${label}으로 변경할까요?`)) return;
+    onChange(operationStatus);
+  }
+
   return (
     <section className="rounded-lg border border-[var(--line)] bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -414,7 +414,7 @@ function BulkOperationControls({
         <button
           type="button"
           disabled={disabled}
-          onClick={() => onChange('OPEN')}
+          onClick={() => confirmAndChange('OPEN')}
           className="min-h-14 rounded-lg bg-[var(--asan-green)] px-3 text-base font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saving === 'OPEN' ? '변경 중' : '전체 운영중'}
@@ -422,7 +422,7 @@ function BulkOperationControls({
         <button
           type="button"
           disabled={disabled}
-          onClick={() => onChange('CLOSED')}
+          onClick={() => confirmAndChange('CLOSED')}
           className="min-h-14 rounded-lg bg-slate-800 px-3 text-base font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saving === 'CLOSED' ? '변경 중' : '전체 마감'}
@@ -453,7 +453,7 @@ function CommandBrief({
 }) {
   const attentionText =
     problemCount > 0
-      ? `문제 ${problemCount}개, 도움 ${helpCount}건`
+      ? `문제 ${problemCount}개 · 도움 ${helpCount}건`
       : mode === 'hq'
         ? '현장 이상 신호 없음'
         : '운영 상태 공개 확인';
@@ -467,19 +467,19 @@ function CommandBrief({
           <div className="min-w-0">
             <div className="text-xs font-black uppercase tracking-[0.16em] text-[var(--asan-yellow)]">Live Operations</div>
             <h1 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">
-              {mode === 'hq' ? '운영본부 관제 모드' : '부스 운영 공개 현황'}
+              {mode === 'hq' ? '운영본부 관리 모드' : '부스 운영 공개 현황'}
             </h1>
             <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-white">
               {mode === 'hq'
-                ? '문제 부스, 도움 요청, 혼잡도를 한 화면에서 확인하고 즉시 조치합니다.'
-                : '행사장 부스 운영 상태와 혼잡도를 실시간으로 확인할 수 있습니다.'}
+                ? '문제 부스, 도움 요청, 혼잡 여부를 한 화면에서 확인하고 즉시 조치합니다.'
+                : '행사 부스의 운영 상태와 혼잡도를 실시간으로 확인할 수 있습니다.'}
             </p>
             {helpHref ? (
               <a
                 href={helpHref}
                 className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-white px-4 text-sm font-black text-[var(--brand)]"
               >
-                도움 요청 큐 열기
+                도움 요청 열기
               </a>
             ) : null}
           </div>
@@ -492,7 +492,7 @@ function CommandBrief({
         <div className="relative mt-5 grid gap-2 sm:grid-cols-3">
           <StatusStrip label="현재 판단" value={attentionText} danger={problemCount > 0} />
           <StatusStrip label="권한" value={canEdit ? 'HQ 수정 가능' : mode === 'hq' ? '토큰 확인 필요' : '읽기 전용'} />
-          <StatusStrip label="갱신" value={`${formatTime(lastRefresh)} · 2초 주기`} />
+          <StatusStrip label="갱신" value={`${formatTime(lastRefresh)} · 5초 주기`} />
         </div>
       </div>
     </section>

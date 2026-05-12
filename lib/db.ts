@@ -411,10 +411,21 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
     incident.updatedAt = now;
 
     if (status === 'RESOLVED') {
-      const hasOpenIncident = store.incidents.some(
-        (item) => item.boothNo === incident.boothNo && item.status !== 'RESOLVED'
-      );
-      if (!hasOpenIncident) {
+      const activeIncident = store.incidents
+        .filter((item) => item.boothNo === incident.boothNo && item.status !== 'RESOLVED')
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.createdAt.localeCompare(a.createdAt))[0];
+
+      if (activeIncident) {
+        await updateBoothStatus(
+          incident.boothNo,
+          {
+            helpRequested: true,
+            helpType: activeIncident.type,
+            memo: activeIncident.memo
+          },
+          'hq'
+        );
+      } else {
         await updateBoothStatus(incident.boothNo, { helpRequested: false, helpType: undefined }, 'hq');
       }
     }
@@ -434,14 +445,28 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
   const incident = mapIncidentRow(data);
 
   if (status === 'RESOLVED') {
-    const { count, error: countError } = await supabase
+    const { data: activeRows, error: activeError } = await supabase
       .from('incidents')
-      .select('id', { count: 'exact', head: true })
+      .select('*')
       .eq('booth_no', incident.boothNo)
-      .in('status', ['NEW', 'IN_PROGRESS']);
+      .in('status', ['NEW', 'IN_PROGRESS'])
+      .order('updated_at', { ascending: false })
+      .limit(1);
 
-    if (countError) throw countError;
-    if (!count) {
+    if (activeError) throw activeError;
+    const activeIncident = activeRows?.[0] ? mapIncidentRow(activeRows[0]) : undefined;
+
+    if (activeIncident) {
+      await updateBoothStatus(
+        incident.boothNo,
+        {
+          helpRequested: true,
+          helpType: activeIncident.type,
+          memo: activeIncident.memo
+        },
+        'hq'
+      );
+    } else {
       await updateBoothStatus(incident.boothNo, { helpRequested: false, helpType: undefined, memo: '' }, 'hq');
     }
   }

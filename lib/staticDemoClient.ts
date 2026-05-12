@@ -74,6 +74,11 @@ function writeState(state: StaticState) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function emitHelpCreated(incident: Incident) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('smartyouth-help-created', { detail: incident }));
+}
+
 function valueToString(value: unknown) {
   if (value === undefined || value === null || value === '') return undefined;
   return String(value);
@@ -83,6 +88,36 @@ function canWrite(token?: string | null, boothNo?: number) {
   const hq = token === STATIC_HQ_TOKEN;
   const booth = typeof boothNo === 'number' && token === demoBoothToken(boothNo);
   return { hq, booth, canEditBooth: hq || booth };
+}
+
+function latestActiveIncident(state: StaticState, boothNo: number) {
+  return state.incidents
+    .filter((incident) => incident.boothNo === boothNo && incident.status !== 'RESOLVED')
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.createdAt.localeCompare(a.createdAt))[0];
+}
+
+function syncBoothHelpStatus(state: StaticState, boothNo: number, now: string) {
+  const active = latestActiveIncident(state, boothNo);
+  const index = state.statuses.findIndex((status) => status.boothNo === boothNo);
+  const current = index >= 0 ? state.statuses[index] : createInitialStatus(boothNo, now);
+  const next: BoothStatus = active
+    ? {
+        ...current,
+        helpRequested: true,
+        helpType: active.type,
+        memo: active.memo,
+        updatedAt: now
+      }
+    : {
+        ...current,
+        helpRequested: false,
+        helpType: undefined,
+        memo: undefined,
+        updatedAt: now
+      };
+
+  if (index >= 0) state.statuses[index] = next;
+  else state.statuses.push(next);
 }
 
 function joinState(state: StaticState): BoothWithStatus[] {
@@ -246,6 +281,7 @@ export async function createStaticHelp(
     existing.status = 'NEW';
     existing.memo = memo?.trim() || existing.memo;
     existing.updatedAt = now;
+    syncBoothHelpStatus(state, boothNo, now);
     writeState(state);
     return { incident: existing, savedAt: now };
   }
@@ -260,7 +296,9 @@ export async function createStaticHelp(
     updatedAt: now
   };
   state.incidents.unshift(incident);
+  syncBoothHelpStatus(state, boothNo, now);
   writeState(state);
+  emitHelpCreated(incident);
   return { incident, savedAt: now };
 }
 
@@ -274,25 +312,7 @@ export async function patchStaticIncident(token: string | null | undefined, inci
 
   incident.status = status;
   incident.updatedAt = now;
-
-  if (status === 'RESOLVED') {
-    const hasOpenIncident = state.incidents.some(
-      (item) => item.boothNo === incident.boothNo && item.status !== 'RESOLVED'
-    );
-    if (!hasOpenIncident) {
-      const index = state.statuses.findIndex((item) => item.boothNo === incident.boothNo);
-      const current = index >= 0 ? state.statuses[index] : createInitialStatus(incident.boothNo, now);
-      const next = {
-        ...current,
-        helpRequested: false,
-        helpType: undefined,
-        memo: undefined,
-        updatedAt: now
-      };
-      if (index >= 0) state.statuses[index] = next;
-      else state.statuses.push(next);
-    }
-  }
+  syncBoothHelpStatus(state, incident.boothNo, now);
 
   writeState(state);
   return { incident, savedAt: now };

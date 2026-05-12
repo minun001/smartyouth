@@ -75,6 +75,16 @@ Booth 1 demo: /booth/1?t=demo-booth-1
 
 Use the GitHub Pages build only for preview/demo. Do not use it as the real event-day operations backend.
 
+To reproduce the GitHub Pages build locally:
+
+```bash
+npm run typecheck
+npm test
+npm run build:pages
+```
+
+`npm run build:pages` temporarily disables server API routes for static export and restores them after the build.
+
 ## Event Day Use
 
 1. Apply the Supabase schema and confirm booth seed data.
@@ -87,6 +97,6 @@ Use the GitHub Pages build only for preview/demo. Do not use it as the real even
 
 ## Shared Status Updates
 
-Booth staff and HQ can change operation status and congestion from large buttons on the booth control panel. Each change is saved through the server API, then public dashboards, HQ, map, help, and booth screens refresh every 2 seconds so other people can see the updated value.
+Booth staff and HQ can change operation status and congestion from large buttons on the booth control panel. Each change is saved through the server API, then public dashboards, HQ, map, help, and booth screens refresh every 5 seconds so other people can see the updated value.
 
 For this to be shared across phones, run the app on a server-capable Next.js host with Supabase env vars configured. GitHub Pages static demo mode stores changes in each browser only, so it is useful for preview but not for real shared operations.

@@ -30,15 +30,14 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Disable server API routes for static export
-        run: mv app/api app/_api_disabled
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
 
       - name: Build static demo
-        run: npm run build
-        env:
-          GITHUB_PAGES: 'true'
-          NEXT_PUBLIC_STATIC_DEMO: 'true'
-          NEXT_PUBLIC_BASE_PATH: /smartyouth
+        run: npm run build:pages
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

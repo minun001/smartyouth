@@ -20,23 +20,30 @@ export default function GlobalHelpNotifier() {
   const initializedRef = useRef(false);
   const knownIncidentIdsRef = useRef<Set<string>>(new Set());
 
-  const helpHref = useMemo(() => {
-    if (typeof window === 'undefined') return appPath('/help');
-    const token = new URLSearchParams(window.location.search).get('t');
-    return appPath(`/help${token ? `?t=${encodeURIComponent(token)}` : ''}`);
+  const currentToken = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    return new URLSearchParams(window.location.search).get('t');
   }, []);
 
+  const helpHref = useMemo(() => {
+    return appPath(`/help${currentToken ? `?t=${encodeURIComponent(currentToken)}` : ''}`);
+  }, [currentToken]);
+
   const loadStatus = useCallback(async (): Promise<ClientStatusResponse | null> => {
-    if (isStaticDemo) return getStaticStatus();
+    if (isStaticDemo) return getStaticStatus(currentToken);
 
     try {
-      const response = await fetch(appPath('/api/status'), { cache: 'no-store' });
+      const params = new URLSearchParams();
+      if (currentToken) params.set('t', currentToken);
+      const response = await fetch(`${appPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
+        cache: 'no-store'
+      });
       if (!response.ok) return null;
       return (await response.json()) as ClientStatusResponse;
     } catch {
       return null;
     }
-  }, []);
+  }, [currentToken]);
 
   const notify = useCallback((nextNotice: HelpNotice) => {
     setNotice(nextNotice);
@@ -46,7 +53,7 @@ export default function GlobalHelpNotifier() {
     }
 
     if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('새 도움요청', {
+      new Notification('새 도움 요청', {
         body: `부스 ${nextNotice.boothNo} · ${helpTypeLabels[nextNotice.type]}`,
         icon: appPath('/favicon.png'),
         tag: nextNotice.id
@@ -84,14 +91,14 @@ export default function GlobalHelpNotifier() {
     void checkForNewHelp();
 
     const id = window.setInterval(() => void checkForNewHelp(), Math.max(STATUS_REFRESH_INTERVAL_MS, 3000));
-    const onStorage = () => void checkForNewHelp();
-    window.addEventListener('storage', onStorage);
-    window.addEventListener('smartyouth-help-created', onStorage);
+    const onHelpSignal = () => void checkForNewHelp();
+    window.addEventListener('storage', onHelpSignal);
+    window.addEventListener('smartyouth-help-created', onHelpSignal);
 
     return () => {
       window.clearInterval(id);
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('smartyouth-help-created', onStorage);
+      window.removeEventListener('storage', onHelpSignal);
+      window.removeEventListener('smartyouth-help-created', onHelpSignal);
     };
   }, [checkForNewHelp]);
 
@@ -111,11 +118,13 @@ export default function GlobalHelpNotifier() {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-xs font-black text-red-600">새 도움요청</div>
+          <div className="text-xs font-black text-red-600">새 도움 요청</div>
           <div className="mt-1 truncate text-lg font-black">
             부스 {notice.boothNo} · {helpTypeLabels[notice.type]}
           </div>
-          <div className="mt-1 truncate text-sm font-bold text-slate-600">{notice.boothName ?? '부스 정보 확인 필요'}</div>
+          <div className="mt-1 truncate text-sm font-bold text-slate-600">
+            {notice.boothName ?? '부스 정보 확인 필요'}
+          </div>
           {notice.memo ? <div className="mt-2 text-sm font-bold leading-5 text-slate-700">{notice.memo}</div> : null}
           <div className="mt-2 text-xs font-bold text-slate-500">{formatTime(notice.createdAt)}</div>
         </div>
@@ -123,7 +132,7 @@ export default function GlobalHelpNotifier() {
           type="button"
           onClick={() => setNotice(null)}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xl font-black text-slate-700"
-          aria-label="도움요청 알림 닫기"
+          aria-label="도움 요청 알림 닫기"
         >
           x
         </button>

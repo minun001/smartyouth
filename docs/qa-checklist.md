@@ -3,11 +3,15 @@
 - [ ] Mobile 360px check: dashboard, booth control, help queue, and map fit without horizontal scroll.
 - [ ] iPhone Safari check: sticky header, bottom nav, range slider, and textarea work normally.
 - [ ] Android Chrome check: large buttons are easy to tap and bottom nav is not blocked by browser chrome.
+- [ ] GitHub Pages check: `https://minun001.github.io/smartyouth/` loads map, bottom nav, logo, and `_next` assets under `/smartyouth`.
+- [ ] Static demo check: `/help?t=demo-hq`, `/overview?t=demo-hq`, and `/hq?t=demo-hq` work after a hard refresh.
 - [ ] Booth token invalid check: `/booth/[boothNo]` shows read-only status and the QR warning.
 - [ ] HQ token valid check: `/hq?t=HQ_TOKEN` can edit all booths and resolve incidents.
 - [ ] Booth token cannot edit other booth: token for booth 1 cannot PATCH booth 2.
 - [ ] Congestion slider updates correctly and card color reflects the selected level.
 - [ ] Help request appears on HQ dashboard and `/help?t=HQ_TOKEN`.
+- [ ] Help request with the same booth/type updates the existing open request instead of creating noisy duplicates.
+- [ ] Dragging a help request into the complete zone sends only one completion update.
 - [ ] Material LOW appears as problem booth.
 - [ ] PAUSED appears as problem booth.
 - [ ] Booths 42 and 43 are not created.
@@ -15,3 +19,4 @@
 - [ ] Public `/` stays read-only and does not expose write controls.
 - [ ] Supabase service role key is only read by server code.
 - [ ] Demo mode works when Supabase env vars are missing.
+- [ ] `npm run build:pages` restores `app/api` after static export, even when the build fails.

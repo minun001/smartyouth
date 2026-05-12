@@ -5,7 +5,6 @@ import {
   boothTypeLabels,
   congestionStatusColor,
   congestionStatusLabel,
-  congestionStatusSoftColor,
   formatRelativeUpdatedAt,
   operationStatusLabels
 } from '@/lib/statusLabels';
@@ -33,16 +32,15 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
 
   return (
     <article
-      className={`overflow-hidden rounded-lg border shadow-sm transition ${
+      className={`overflow-hidden rounded-lg border bg-white shadow-sm transition ${
         booth.problem ? 'border-red-200 shadow-red-100' : 'border-[var(--line)]'
       }`}
-      style={{ backgroundColor: '#ffffff' }}
     >
       <button
         type="button"
         aria-expanded={expanded}
         onClick={() => setExpanded((current) => !current)}
-        className="relative flex min-h-20 w-full items-center justify-between gap-3 p-4 text-left active:bg-white/50"
+        className="relative flex min-h-20 w-full items-center justify-between gap-3 p-4 text-left active:bg-slate-50"
       >
         <span className="absolute bottom-0 left-0 top-0 w-1.5" style={{ backgroundColor: priorityColor }} />
         <div className="flex min-w-0 items-center gap-3">
@@ -80,7 +78,7 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
       </button>
 
       {expanded ? (
-        <div className="border-t border-white/80 px-4 pb-4 pt-3">
+        <div className="border-t border-[var(--line)] bg-slate-50 px-4 pb-4 pt-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="text-xs font-black text-slate-500">{boothTypeLabels[booth.type]} 부스</div>
@@ -117,10 +115,12 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
           ) : null}
 
           {status.memo ? (
-            <div className="mt-3 rounded-md bg-white/80 p-3 text-sm font-bold leading-6 text-slate-700">{status.memo}</div>
+            <div className="mt-3 rounded-md bg-white p-3 text-sm font-bold leading-6 text-slate-700">{status.memo}</div>
           ) : null}
 
-          <div className="mt-3 text-xs font-bold text-slate-500">업데이트 {formatRelativeUpdatedAt(status.updatedAt)}</div>
+          <div className="mt-3 text-xs font-bold text-slate-500">
+            업데이트 <span suppressHydrationWarning>{formatRelativeUpdatedAt(status.updatedAt)}</span>
+          </div>
         </div>
       ) : null}
     </article>
@@ -129,7 +129,7 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
 
 function StatusPill({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="rounded-md bg-white/80 px-3 py-2">
+    <div className="rounded-md bg-white px-3 py-2">
       <div className="text-[11px] font-black text-slate-500">{label}</div>
       <div className="mt-0.5 truncate text-base font-black text-slate-900" style={color ? { color } : undefined}>
         {value}
