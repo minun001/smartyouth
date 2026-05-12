@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { appPath } from '@/lib/clientConfig';
 import type { BoothWithStatus } from '@/lib/types';
 import {
@@ -21,6 +21,77 @@ type MapViewProps = {
   onEdit?: (booth: BoothWithStatus) => void;
 };
 
+type MapTransform = {
+  scale: number;
+  x: number;
+  y: number;
+};
+
+type ViewportSize = {
+  width: number;
+  height: number;
+};
+
+type Point = {
+  x: number;
+  y: number;
+};
+
+const MAP_IMAGE_WIDTH = 1135;
+const MAP_IMAGE_HEIGHT = 710;
+const MIN_ZOOM = 0.72;
+const MAX_ZOOM = 3.2;
+const MARKER_SIZE = 44;
+const MAP_BOTTOM_INSET = 116;
+const BOOTH_POSITION_OVERRIDES: Record<number, Point> = {
+  8: { x: 33.0, y: 64.8 }
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getFitScale(size: ViewportSize) {
+  if (!size.width || !size.height) {
+    return 1;
+  }
+
+  return clamp(size.width / MAP_IMAGE_WIDTH, MIN_ZOOM, 1);
+}
+
+function constrainTransform(transform: MapTransform, size: ViewportSize): MapTransform {
+  if (!size.width || !size.height) {
+    return transform;
+  }
+
+  const scale = clamp(transform.scale, getFitScale(size), MAX_ZOOM);
+  const scaledWidth = MAP_IMAGE_WIDTH * scale;
+  const scaledHeight = MAP_IMAGE_HEIGHT * scale;
+  const centeredX = (size.width - scaledWidth) / 2;
+  const centeredY = Math.max(12, (size.height - MAP_BOTTOM_INSET - scaledHeight) / 2);
+  const x =
+    scaledWidth <= size.width
+      ? centeredX
+      : clamp(transform.x, size.width - scaledWidth - MARKER_SIZE, MARKER_SIZE);
+  const y =
+    scaledHeight <= size.height - MAP_BOTTOM_INSET
+      ? centeredY
+      : clamp(transform.y, size.height - MAP_BOTTOM_INSET - scaledHeight - MARKER_SIZE, MARKER_SIZE);
+
+  return { scale, x, y };
+}
+
+function getDistance(a: Point, b: Point) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function getMidpoint(a: Point, b: Point): Point {
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2
+  };
+}
+
 export default function MapView({
   booths,
   editable = false,
@@ -30,9 +101,171 @@ export default function MapView({
 }: MapViewProps) {
   const [imageMissing, setImageMissing] = useState(false);
   const [selectedBoothNo, setSelectedBoothNo] = useState<number | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const pointersRef = useRef(new Map<number, Point>());
+  const lastPanPointRef = useRef<Point | null>(null);
+  const lastPinchRef = useRef<{ distance: number; midpoint: Point } | null>(null);
+  const didDragRef = useRef(false);
+  const transformRef = useRef<MapTransform>({ scale: 1, x: 0, y: 0 });
+  const [viewportSize, setViewportSize] = useState<ViewportSize>({ width: 0, height: 0 });
+  const [transform, setTransformState] = useState<MapTransform>({ scale: 1, x: 0, y: 0 });
   const hasPins = booths.some((booth) => typeof booth.x === 'number' && typeof booth.y === 'number');
   const problemBooths = booths.filter((booth) => booth.problem);
   const selectedBooth = booths.find((booth) => booth.boothNo === selectedBoothNo);
+  const minScale = useMemo(() => getFitScale(viewportSize), [viewportSize]);
+  const canZoomOut = transform.scale > minScale + 0.01;
+  const canReset = Math.abs(transform.scale - minScale) > 0.01 || Math.abs(transform.x) > 1 || Math.abs(transform.y) > 1;
+
+  const setTransform = useCallback(
+    (nextTransform: MapTransform) => {
+      const constrained = constrainTransform(nextTransform, viewportSize);
+      transformRef.current = constrained;
+      setTransformState(constrained);
+    },
+    [viewportSize]
+  );
+
+  const zoomAround = useCallback(
+    (nextScale: number, point: Point) => {
+      const current = transformRef.current;
+      const scale = clamp(nextScale, minScale, MAX_ZOOM);
+      const mapX = (point.x - current.x) / current.scale;
+      const mapY = (point.y - current.y) / current.scale;
+      setTransform({
+        scale,
+        x: point.x - mapX * scale,
+        y: point.y - mapY * scale
+      });
+    },
+    [minScale, setTransform]
+  );
+
+  const resetTransform = useCallback(() => {
+    setTransform({ scale: minScale, x: 0, y: 0 });
+  }, [minScale, setTransform]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) {
+      return;
+    }
+
+    const observer = new ResizeObserver(([entry]) => {
+      const nextSize = {
+        width: entry.contentRect.width,
+        height: entry.contentRect.height
+      };
+      setViewportSize(nextSize);
+      const nextTransform = constrainTransform(
+        {
+          ...transformRef.current,
+          scale: Math.max(transformRef.current.scale, getFitScale(nextSize))
+        },
+        nextSize
+      );
+      transformRef.current = nextTransform;
+      setTransformState(nextTransform);
+    });
+    observer.observe(viewport);
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!viewportSize.width || !viewportSize.height) {
+      return;
+    }
+
+    resetTransform();
+  }, [resetTransform, viewportSize.width, viewportSize.height]);
+
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest('[data-booth-marker], [data-map-control], [data-map-panel]')) {
+      return;
+    }
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    didDragRef.current = false;
+
+    const pointers = Array.from(pointersRef.current.values());
+    if (pointers.length === 1) {
+      lastPanPointRef.current = pointers[0];
+      lastPinchRef.current = null;
+    } else if (pointers.length === 2) {
+      lastPanPointRef.current = null;
+      lastPinchRef.current = {
+        distance: getDistance(pointers[0], pointers[1]),
+        midpoint: getMidpoint(pointers[0], pointers[1])
+      };
+    }
+  }, []);
+
+  const handlePointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!pointersRef.current.has(event.pointerId)) {
+        return;
+      }
+
+      pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      const pointers = Array.from(pointersRef.current.values());
+
+      if (pointers.length === 1 && lastPanPointRef.current) {
+        const nextPoint = pointers[0];
+        const dx = nextPoint.x - lastPanPointRef.current.x;
+        const dy = nextPoint.y - lastPanPointRef.current.y;
+        if (Math.abs(dx) + Math.abs(dy) > 6) {
+          didDragRef.current = true;
+        }
+        lastPanPointRef.current = nextPoint;
+        setTransform({
+          ...transformRef.current,
+          x: transformRef.current.x + dx,
+          y: transformRef.current.y + dy
+        });
+      } else if (pointers.length === 2) {
+        const distance = getDistance(pointers[0], pointers[1]);
+        const midpoint = getMidpoint(pointers[0], pointers[1]);
+        const lastPinch = lastPinchRef.current;
+        if (lastPinch && lastPinch.distance > 0) {
+          const nextScale = transformRef.current.scale * (distance / lastPinch.distance);
+          didDragRef.current = true;
+          zoomAround(nextScale, midpoint);
+        }
+        lastPinchRef.current = { distance, midpoint };
+      }
+    },
+    [setTransform, zoomAround]
+  );
+
+  const clearPointer = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(event.pointerId);
+    const pointers = Array.from(pointersRef.current.values());
+    lastPanPointRef.current = pointers.length === 1 ? pointers[0] : null;
+    lastPinchRef.current =
+      pointers.length === 2
+        ? {
+            distance: getDistance(pointers[0], pointers[1]),
+            midpoint: getMidpoint(pointers[0], pointers[1])
+          }
+        : null;
+  }, []);
+
+  const handleWheel = useCallback(
+    (event: React.WheelEvent<HTMLDivElement>) => {
+      if (!event.ctrlKey && Math.abs(event.deltaY) < Math.abs(event.deltaX)) {
+        return;
+      }
+
+      event.preventDefault();
+      const rect = event.currentTarget.getBoundingClientRect();
+      zoomAround(transformRef.current.scale * (event.deltaY > 0 ? 0.88 : 1.12), {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      });
+    },
+    [zoomAround]
+  );
 
   return (
     <section className={fullScreen ? 'relative flex h-full flex-col bg-slate-100' : 'space-y-4'}>
@@ -59,55 +292,133 @@ export default function MapView({
               <MapLegend />
             </div>
           ) : null}
+
           <div
+            ref={viewportRef}
+            data-map-viewport
             className={
               fullScreen
-                ? 'h-full overflow-auto overscroll-contain pb-[calc(env(safe-area-inset-bottom)+92px)]'
-                : 'overflow-x-auto bg-slate-100'
+                ? 'relative h-full min-h-0 touch-none overflow-hidden overscroll-contain bg-slate-100'
+                : 'relative h-[min(68vh,680px)] min-h-[360px] touch-none overflow-hidden bg-slate-100'
             }
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={clearPointer}
+            onPointerCancel={clearPointer}
+            onLostPointerCapture={clearPointer}
+            onWheel={handleWheel}
           >
-            <div className={fullScreen ? 'relative min-w-[900px]' : 'relative min-w-[760px]'}>
+            <div
+              data-map-layer
+              className="absolute left-0 top-0 origin-top-left select-none"
+              style={{
+                width: MAP_IMAGE_WIDTH,
+                height: MAP_IMAGE_HEIGHT,
+                transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.scale})`
+              }}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={appPath('/booth-map.png')}
                 alt="부스배치도"
-                className="h-auto w-full select-none"
+                width={MAP_IMAGE_WIDTH}
+                height={MAP_IMAGE_HEIGHT}
+                className="h-full w-full max-w-none select-none"
+                draggable={false}
                 onError={() => setImageMissing(true)}
               />
+            </div>
+
               {hasPins
-                ? booths
-                    .filter((booth) => typeof booth.x === 'number' && typeof booth.y === 'number')
-                    .map((booth) => {
-                      const selected = booth.boothNo === selectedBoothNo;
-                      const isCongested = isCongestedLevel(booth.status.congestionLevel);
-                      return (
-                        <button
-                          key={booth.boothNo}
-                          type="button"
-                          aria-label={`부스 ${booth.boothNo} ${booth.name} 보기`}
-                          onClick={() => setSelectedBoothNo(booth.boothNo)}
-                          className={`absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full transition active:scale-95 ${
-                            selected ? 'z-10' : ''
+              ? booths
+                  .filter((booth) => typeof booth.x === 'number' && typeof booth.y === 'number')
+                  .map((booth) => {
+                    const selected = booth.boothNo === selectedBoothNo;
+                    const isCongested = isCongestedLevel(booth.status.congestionLevel);
+                    const position = BOOTH_POSITION_OVERRIDES[booth.boothNo] ?? { x: booth.x ?? 0, y: booth.y ?? 0 };
+                    const left = transform.x + (position.x / 100) * MAP_IMAGE_WIDTH * transform.scale;
+                    const top = transform.y + (position.y / 100) * MAP_IMAGE_HEIGHT * transform.scale;
+
+                    return (
+                      <button
+                        key={booth.boothNo}
+                        type="button"
+                        data-booth-marker={booth.boothNo}
+                        aria-label={`부스 ${booth.boothNo} ${booth.name} 보기`}
+                        onPointerDown={() => {
+                          didDragRef.current = false;
+                        }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (didDragRef.current) {
+                            event.preventDefault();
+                            didDragRef.current = false;
+                            return;
+                          }
+                          setSelectedBoothNo(booth.boothNo);
+                        }}
+                        className={`absolute z-20 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full transition active:scale-95 ${
+                          selected ? 'z-30' : ''
+                        }`}
+                        style={{ left, top }}
+                      >
+                        <span
+                          className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-black text-white shadow-lg ${
+                            booth.problem
+                              ? 'bg-red-500 ring-4 ring-red-200'
+                              : selected
+                                ? 'bg-[var(--asan-sky)] ring-4 ring-[var(--asan-yellow)]'
+                                : isCongested
+                                  ? 'bg-orange-500'
+                                  : 'bg-slate-950'
                           }`}
-                          style={{ left: `${booth.x}%`, top: `${booth.y}%` }}
                         >
-                          <span
-                            className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-black text-white shadow-lg ${
-                              booth.problem
-                                ? 'bg-red-500 ring-4 ring-red-200'
-                                : selected
-                                  ? 'bg-[var(--asan-sky)] ring-4 ring-[var(--asan-yellow)]'
-                                  : isCongested
-                                    ? 'bg-orange-500'
-                                    : 'bg-slate-950'
-                            }`}
-                          >
-                            {booth.boothNo}
-                          </span>
-                        </button>
-                      );
-                    })
+                          {booth.boothNo}
+                        </span>
+                      </button>
+                    );
+                  })
                 : null}
+            <div className="absolute right-3 top-3 z-40 flex overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+              <button
+                type="button"
+                data-map-control="zoom-in"
+                onClick={() =>
+                  zoomAround(transform.scale * 1.2, {
+                    x: viewportSize.width / 2,
+                    y: viewportSize.height / 2
+                  })
+                }
+                className="flex h-11 w-11 items-center justify-center border-r border-slate-200 text-xl font-black text-slate-800"
+                aria-label="지도 확대"
+              >
+                +
+              </button>
+              <button
+                type="button"
+                data-map-control="zoom-out"
+                onClick={() =>
+                  zoomAround(transform.scale / 1.2, {
+                    x: viewportSize.width / 2,
+                    y: viewportSize.height / 2
+                  })
+                }
+                disabled={!canZoomOut}
+                className="flex h-11 w-11 items-center justify-center border-r border-slate-200 text-xl font-black text-slate-800 disabled:text-slate-300"
+                aria-label="지도 축소"
+              >
+                -
+              </button>
+              <button
+                type="button"
+                data-map-control="reset"
+                onClick={resetTransform}
+                disabled={!canReset}
+                className="min-h-11 px-3 text-xs font-black text-slate-700 disabled:text-slate-300"
+                aria-label="지도 다시 보기"
+              >
+                Reset
+              </button>
             </div>
           </div>
 
@@ -191,7 +502,10 @@ function SelectedBoothFloat({
   const name = booth.name.length > 24 ? `${booth.name.slice(0, 24)}...` : booth.name;
 
   return (
-    <div className="pointer-events-none absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+92px)] z-30 mx-auto max-w-lg">
+    <div
+      data-map-panel
+      className="pointer-events-none absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+92px)] z-30 mx-auto max-w-lg"
+    >
       <article className="pointer-events-auto rounded-lg border border-slate-200 bg-white p-3 shadow-[0_18px_48px_rgba(15,23,42,0.24)]">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-3">
