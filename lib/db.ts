@@ -9,6 +9,7 @@ import type {
   HelpType,
   Incident,
   IncidentStatus,
+  OperationStatus,
   RecentChange,
   StatusPatch
 } from './types';
@@ -307,6 +308,13 @@ export async function updateBoothStatus(boothNo: number, patch: StatusPatch, sou
   }
 
   return mapStatusRow(data);
+}
+
+export async function updateAllBoothOperationStatuses(operationStatus: OperationStatus, source: string) {
+  const boothRows = await listBooths();
+  return Promise.all(
+    boothRows.map((booth) => updateBoothStatus(booth.boothNo, { operationStatus }, source))
+  );
 }
 
 export async function createOrUpdateIncident(boothNo: number, type: HelpType, memo: string | undefined, source: string) {

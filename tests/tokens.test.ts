@@ -19,4 +19,10 @@ describe('token helpers', () => {
     expect(verifyHqToken('hq-token', 'hq-token')).toBe(true);
     expect(verifyHqToken('other', 'hq-token')).toBe(false);
   });
+
+  it('accepts demo tokens when secrets are missing', () => {
+    expect(verifyHqToken('demo-hq', '')).toBe(true);
+    expect(verifyBoothToken(5, 'demo-booth-5', '')).toBe(true);
+    expect(verifyBoothToken(6, 'demo-booth-5', '')).toBe(false);
+  });
 });

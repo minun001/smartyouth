@@ -11,8 +11,13 @@ import SummaryCards from './SummaryCards';
 import { appPath, isStaticDemo } from '@/lib/clientConfig';
 import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
 import { formatTime } from '@/lib/statusLabels';
-import { getInitialStaticStatus, getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
-import type { BoothStatus, DashboardFilter } from '@/lib/types';
+import {
+  getInitialStaticStatus,
+  getStaticStatus,
+  patchStaticAllOperationStatuses,
+  type ClientStatusResponse
+} from '@/lib/staticDemoClient';
+import type { BoothStatus, DashboardFilter, OperationStatus } from '@/lib/types';
 
 type DashboardViewProps = {
   mode: 'public' | 'hq';
@@ -28,6 +33,8 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
   const [selectedBoothNo, setSelectedBoothNo] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!isStaticDemo);
+  const [bulkSaving, setBulkSaving] = useState<OperationStatus | null>(null);
+  const [bulkSavedMessage, setBulkSavedMessage] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -109,6 +116,48 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
         )
       };
     });
+  }
+
+  async function patchAllOperationStatus(operationStatus: OperationStatus) {
+    if (!canEdit) return;
+
+    setBulkSaving(operationStatus);
+    setBulkSavedMessage(null);
+    setError(null);
+
+    try {
+      if (isStaticDemo) {
+        const result = await patchStaticAllOperationStatuses(token, operationStatus);
+        setData(getStaticStatus(token));
+        setBulkSavedMessage(
+          `전체 ${operationStatus === 'OPEN' ? '운영중' : '마감'}으로 변경됨 · ${formatTime(result.savedAt)}`
+        );
+        return;
+      }
+
+      const params = new URLSearchParams();
+      if (token) params.set('t', token);
+
+      const response = await fetch(`${appPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operationStatus })
+      });
+
+      if (!response.ok) {
+        throw new Error('Bulk update failed.');
+      }
+
+      const result = (await response.json()) as { savedAt?: string };
+      await loadStatus();
+      setBulkSavedMessage(
+        `전체 ${operationStatus === 'OPEN' ? '운영중' : '마감'}으로 변경됨 · ${formatTime(result.savedAt)}`
+      );
+    } catch {
+      setError('일괄 변경에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setBulkSaving(null);
+    }
   }
 
   const isMapView = view === 'map';
@@ -199,6 +248,15 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                 helpHref={canEdit ? appPath(`/help${token ? `?t=${encodeURIComponent(token)}` : ''}`) : undefined}
               />
               <SummaryCards booths={data.booths} />
+
+              <BulkOperationControls
+                totalCount={data.booths.length}
+                canEdit={canEdit}
+                demoHqHref={!canEdit && data.mode === 'demo' ? appPath('/overview?t=demo-hq') : undefined}
+                saving={bulkSaving}
+                savedMessage={bulkSavedMessage}
+                onChange={(operationStatus) => void patchAllOperationStatus(operationStatus)}
+              />
 
               {problemBooths.length > 0 ? (
                 <section className="rounded-lg border border-red-200 bg-red-50 p-4 shadow-sm">
@@ -307,6 +365,70 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
 
       <BottomNav token={token} hqMode={mode === 'hq' && Boolean(token)} />
     </div>
+  );
+}
+
+function BulkOperationControls({
+  totalCount,
+  canEdit,
+  demoHqHref,
+  saving,
+  savedMessage,
+  onChange
+}: {
+  totalCount: number;
+  canEdit: boolean;
+  demoHqHref?: string;
+  saving: OperationStatus | null;
+  savedMessage: string | null;
+  onChange: (operationStatus: OperationStatus) => void;
+}) {
+  const disabled = !canEdit || Boolean(saving);
+
+  return (
+    <section className="rounded-lg border border-[var(--line)] bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-black text-slate-950">전체 상태 변경</h2>
+          <p className="mt-1 text-sm font-bold text-slate-600">
+            {canEdit
+              ? `전체 ${totalCount}개 부스를 한 번에 표시합니다.`
+              : 'HQ 권한 링크에서만 전체 상태를 변경할 수 있습니다.'}
+          </p>
+        </div>
+        {savedMessage ? (
+          <div className="rounded-md bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-700">
+            {savedMessage}
+          </div>
+        ) : demoHqHref ? (
+          <a
+            href={demoHqHref}
+            className="flex min-h-11 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-black text-white"
+          >
+            데모 HQ로 열기
+          </a>
+        ) : null}
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange('OPEN')}
+          className="min-h-14 rounded-lg bg-[var(--asan-green)] px-3 text-base font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saving === 'OPEN' ? '변경 중' : '전체 운영중'}
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange('CLOSED')}
+          className="min-h-14 rounded-lg bg-slate-800 px-3 text-base font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saving === 'CLOSED' ? '변경 중' : '전체 마감'}
+        </button>
+      </div>
+    </section>
   );
 }
 

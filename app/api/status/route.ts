@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getDataMode, listBoothsWithStatus, listIncidents, listRecentChanges } from '@/lib/db';
+import {
+  getDataMode,
+  listBoothsWithStatus,
+  listIncidents,
+  listRecentChanges,
+  updateAllBoothOperationStatuses
+} from '@/lib/db';
 import { getRequestToken, verifyBoothToken, verifyHqToken } from '@/lib/tokens';
+import type { OperationStatus } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+
+const bulkOperationStatuses: OperationStatus[] = ['OPEN', 'CLOSED'];
 
 export async function GET(request: Request) {
   try {
@@ -33,6 +42,29 @@ export async function GET(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to load status.' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const token = getRequestToken(request);
+    if (!verifyHqToken(token)) {
+      return NextResponse.json({ error: 'HQ token is required.' }, { status: 403 });
+    }
+
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const operationStatus = body.operationStatus as OperationStatus;
+    if (!bulkOperationStatuses.includes(operationStatus)) {
+      return NextResponse.json({ error: 'Invalid operation status.' }, { status: 400 });
+    }
+
+    const statuses = await updateAllBoothOperationStatuses(operationStatus, 'hq:bulk');
+    return NextResponse.json({ statuses, savedAt: new Date().toISOString() });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to update all statuses.' },
       { status: 500 }
     );
   }

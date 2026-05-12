@@ -8,6 +8,7 @@ import type {
   HelpType,
   Incident,
   IncidentStatus,
+  OperationStatus,
   RecentChange,
   StatusPatch
 } from './types';
@@ -177,6 +178,45 @@ export async function patchStaticStatus(boothNo: number, token: string | null | 
   state.logs.unshift(...logs);
   writeState(state);
   return { status: next, savedAt: now };
+}
+
+export async function patchStaticAllOperationStatuses(
+  token: string | null | undefined,
+  operationStatus: OperationStatus
+) {
+  if (!canWrite(token).hq) throw new Error('수정 권한 없음');
+
+  const state = readState();
+  const now = new Date().toISOString();
+  const statusMap = new Map(state.statuses.map((status) => [status.boothNo, status]));
+  const logs: RecentChange[] = [];
+
+  state.statuses = booths.map((booth) => {
+    const current = statusMap.get(booth.boothNo) ?? createInitialStatus(booth.boothNo, now);
+    const next: BoothStatus = {
+      ...current,
+      operationStatus,
+      updatedAt: now
+    };
+
+    if (valueToString(current.operationStatus) !== valueToString(next.operationStatus)) {
+      logs.push({
+        id: id(),
+        boothNo: booth.boothNo,
+        field: 'operationStatus',
+        oldValue: valueToString(current.operationStatus),
+        newValue: valueToString(next.operationStatus),
+        source: 'static-hq:bulk',
+        createdAt: now
+      });
+    }
+
+    return next;
+  });
+
+  state.logs.unshift(...logs);
+  writeState(state);
+  return { statuses: state.statuses, savedAt: now };
 }
 
 export async function createStaticHelp(
