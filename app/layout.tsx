@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import GlobalHelpNotifier from '@/components/GlobalHelpNotifier';
 import './globals.css';
 
 const iconBasePath = process.env.GITHUB_PAGES === 'true' ? '/smartyouth' : '';
@@ -29,7 +30,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        {children}
+        <GlobalHelpNotifier />
+      </body>
     </html>
   );
 }
