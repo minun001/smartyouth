@@ -4,6 +4,7 @@ import {
   listBoothsWithStatus,
   listIncidents,
   listRecentChanges,
+  resetAllOperations,
   updateAllBoothOperationStatuses
 } from '@/lib/db';
 import { getRequestToken, verifyBoothToken, verifyHqToken } from '@/lib/tokens';
@@ -65,6 +66,23 @@ export async function PATCH(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update all statuses.' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const token = getRequestToken(request);
+    if (!verifyHqToken(token)) {
+      return NextResponse.json({ error: 'HQ token is required.' }, { status: 403 });
+    }
+
+    const result = await resetAllOperations();
+    return NextResponse.json(result);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to reset operations.' },
       { status: 500 }
     );
   }

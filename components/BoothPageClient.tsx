@@ -5,10 +5,10 @@ import { useSearchParams } from 'next/navigation';
 import AppHeader from './AppHeader';
 import BoothControlPanel from './BoothControlPanel';
 import BottomNav from './BottomNav';
-import { appPath, isStaticDemo } from '@/lib/clientConfig';
-import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
+import { apiPath, isStaticDemo } from '@/lib/clientConfig';
 import { getInitialStaticStatus, getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
 import type { BoothStatus } from '@/lib/types';
+import { useRealtimeRefresh } from '@/lib/useRealtimeRefresh';
 
 type BoothPageClientProps = {
   boothNo: number;
@@ -34,7 +34,7 @@ export default function BoothPageClient({ boothNo, token }: BoothPageClientProps
       const params = new URLSearchParams({ boothNo: String(boothNo) });
       if (activeToken) params.set('t', activeToken);
 
-      const response = await fetch(`${appPath('/api/status')}?${params.toString()}`, { cache: 'no-store' });
+      const response = await fetch(`${apiPath('/api/status')}?${params.toString()}`, { cache: 'no-store' });
       if (!response.ok) {
         setError('부스 상태를 불러오지 못했습니다.');
         return;
@@ -50,9 +50,9 @@ export default function BoothPageClient({ boothNo, token }: BoothPageClientProps
 
   useEffect(() => {
     void loadStatus();
-    const id = window.setInterval(() => void loadStatus(), STATUS_REFRESH_INTERVAL_MS);
-    return () => window.clearInterval(id);
   }, [loadStatus]);
+
+  useRealtimeRefresh({ enabled: Boolean(data), onRefresh: loadStatus });
 
   const booth = data?.booths.find((item) => item.boothNo === boothNo);
 

@@ -3,8 +3,7 @@
 import { type FormEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppHeader from './AppHeader';
 import BottomNav from './BottomNav';
-import { appPath, isStaticDemo } from '@/lib/clientConfig';
-import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
+import { apiPath, isStaticDemo } from '@/lib/clientConfig';
 import { formatTime, helpTypeLabels, helpTypeOrder, incidentStatusLabels } from '@/lib/statusLabels';
 import {
   createStaticHelp,
@@ -15,6 +14,7 @@ import {
   type ClientStatusResponse
 } from '@/lib/staticDemoClient';
 import type { HelpType, Incident, IncidentStatus } from '@/lib/types';
+import { useRealtimeRefresh } from '@/lib/useRealtimeRefresh';
 
 type HelpPageClientProps = {
   token?: string;
@@ -47,7 +47,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
       const params = new URLSearchParams();
       if (token) params.set('t', token);
-      const response = await fetch(`${appPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
+      const response = await fetch(`${apiPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
         cache: 'no-store'
       });
       if (!response.ok) {
@@ -64,9 +64,9 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
   useEffect(() => {
     void loadStatus();
-    const id = window.setInterval(() => void loadStatus(), STATUS_REFRESH_INTERVAL_MS);
-    return () => window.clearInterval(id);
   }, [loadStatus]);
+
+  useRealtimeRefresh({ enabled: Boolean(data), onRefresh: loadStatus });
 
   useEffect(() => {
     if (!requestSavedMessage) return undefined;
@@ -131,7 +131,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
       }
 
       const suffix = token ? `?t=${encodeURIComponent(token)}` : '';
-      const response = await fetch(`${appPath(`/api/booths/${boothNo}/help`)}${suffix}`, {
+      const response = await fetch(`${apiPath(`/api/booths/${boothNo}/help`)}${suffix}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: requestType, memo })
@@ -163,7 +163,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
       }
 
       const suffix = token ? `?t=${encodeURIComponent(token)}` : '';
-      const response = await fetch(`${appPath(`/api/incidents/${id}`)}${suffix}`, {
+      const response = await fetch(`${apiPath(`/api/incidents/${id}`)}${suffix}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
@@ -197,7 +197,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
       }
 
       const suffix = token ? `?t=${encodeURIComponent(token)}` : '';
-      const response = await fetch(`${appPath('/api/incidents')}${suffix}`, {
+      const response = await fetch(`${apiPath('/api/incidents')}${suffix}`, {
         method: 'DELETE'
       });
       if (!response.ok) throw new Error('Reset failed.');

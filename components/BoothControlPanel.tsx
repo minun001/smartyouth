@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { appPath, isStaticDemo } from '@/lib/clientConfig';
+import { apiPath, isStaticDemo } from '@/lib/clientConfig';
 import { patchStaticStatus } from '@/lib/staticDemoClient';
 import { formatTime } from '@/lib/statusLabels';
 import type { BoothStatus, BoothWithStatus, StatusPatch } from '@/lib/types';
@@ -64,7 +64,7 @@ export default function BoothControlPanel({
       return;
     }
 
-    const response = await fetch(`${appPath(`/api/booths/${booth.boothNo}/status`)}${tokenQuery}`, {
+    const response = await fetch(`${apiPath(`/api/booths/${booth.boothNo}/status`)}${tokenQuery}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch)

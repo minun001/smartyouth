@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 const root = process.cwd();
 const apiPath = join(root, 'app', 'api');
 const disabledPath = join(root, 'app', '_api_disabled');
+const hasExternalApi = Boolean(process.env.NEXT_PUBLIC_API_BASE_URL);
 
 if (!existsSync(apiPath)) {
   throw new Error('app/api 경로를 찾을 수 없습니다.');
@@ -23,7 +24,7 @@ try {
     env: {
       ...process.env,
       GITHUB_PAGES: 'true',
-      NEXT_PUBLIC_STATIC_DEMO: 'true',
+      NEXT_PUBLIC_STATIC_DEMO: process.env.NEXT_PUBLIC_STATIC_DEMO ?? (hasExternalApi ? 'false' : 'true'),
       NEXT_PUBLIC_BASE_PATH: '/smartyouth'
     }
   });

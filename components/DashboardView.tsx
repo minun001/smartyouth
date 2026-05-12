@@ -8,16 +8,17 @@ import BottomNav from './BottomNav';
 import FilterChips from './FilterChips';
 import MapView from './MapView';
 import SummaryCards from './SummaryCards';
-import { appPath, isStaticDemo } from '@/lib/clientConfig';
-import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
+import { apiPath, appPath, isStaticDemo } from '@/lib/clientConfig';
 import { formatTime } from '@/lib/statusLabels';
 import {
   getInitialStaticStatus,
   getStaticStatus,
   patchStaticAllOperationStatuses,
+  resetStaticOperations,
   type ClientStatusResponse
 } from '@/lib/staticDemoClient';
 import type { BoothStatus, DashboardFilter, OperationStatus } from '@/lib/types';
+import { useRealtimeRefresh } from '@/lib/useRealtimeRefresh';
 
 type DashboardViewProps = {
   mode: 'public' | 'hq';
@@ -34,6 +35,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!isStaticDemo);
   const [bulkSaving, setBulkSaving] = useState<OperationStatus | null>(null);
+  const [resetSaving, setResetSaving] = useState(false);
   const [bulkSavedMessage, setBulkSavedMessage] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
@@ -47,7 +49,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
       const params = new URLSearchParams();
       if (token) params.set('t', token);
 
-      const response = await fetch(`${appPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
+      const response = await fetch(`${apiPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
         cache: 'no-store'
       });
 
@@ -67,9 +69,9 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
 
   useEffect(() => {
     void loadStatus();
-    const id = window.setInterval(() => void loadStatus(), STATUS_REFRESH_INTERVAL_MS);
-    return () => window.clearInterval(id);
   }, [loadStatus]);
+
+  useRealtimeRefresh({ enabled: Boolean(data), onRefresh: loadStatus });
 
   useEffect(() => {
     if (!bulkSavedMessage) return undefined;
@@ -142,7 +144,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
       const params = new URLSearchParams();
       if (token) params.set('t', token);
 
-      const response = await fetch(`${appPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
+      const response = await fetch(`${apiPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ operationStatus })
@@ -157,6 +159,49 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
       setError('일괄 변경에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setBulkSaving(null);
+    }
+  }
+
+  async function resetAllOperations() {
+    if (!canEdit || resetSaving) return;
+
+    const confirmed = window.confirm(
+      `운영본부 관리 모드 전체를 초기화할까요?\n\n전체 부스는 준비중/여유 상태로 돌아가고, 도움 요청과 최근 변경 기록도 비워집니다.`
+    );
+    if (!confirmed) return;
+
+    setResetSaving(true);
+    setBulkSavedMessage(null);
+    setError(null);
+
+    try {
+      if (isStaticDemo) {
+        const result = await resetStaticOperations(token);
+        setData(getStaticStatus(token));
+        setFilter('all');
+        setSelectedBoothNo(null);
+        setBulkSavedMessage(`전체 초기화됨 · ${result.boothCount}개 부스 · ${formatTime(result.resetAt)}`);
+        return;
+      }
+
+      const params = new URLSearchParams();
+      if (token) params.set('t', token);
+
+      const response = await fetch(`${apiPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) throw new Error('Reset failed.');
+
+      const result = (await response.json()) as { boothCount?: number; resetAt?: string };
+      await loadStatus();
+      setFilter('all');
+      setSelectedBoothNo(null);
+      setBulkSavedMessage(`전체 초기화됨 · ${result.boothCount ?? data?.booths.length ?? 0}개 부스 · ${formatTime(result.resetAt)}`);
+    } catch {
+      setError('전체 초기화에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setResetSaving(false);
     }
   }
 
@@ -252,8 +297,10 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                 canEdit={canEdit}
                 demoHqHref={!canEdit && data.mode === 'demo' ? appPath('/overview?t=demo-hq') : undefined}
                 saving={bulkSaving}
+                resetSaving={resetSaving}
                 savedMessage={bulkSavedMessage}
                 onChange={(operationStatus) => void patchAllOperationStatus(operationStatus)}
+                onReset={() => void resetAllOperations()}
               />
 
               {statusAttentionBooths.length > 0 ? (
@@ -375,17 +422,21 @@ function BulkOperationControls({
   canEdit,
   demoHqHref,
   saving,
+  resetSaving,
   savedMessage,
-  onChange
+  onChange,
+  onReset
 }: {
   totalCount: number;
   canEdit: boolean;
   demoHqHref?: string;
   saving: OperationStatus | null;
+  resetSaving: boolean;
   savedMessage: string | null;
   onChange: (operationStatus: OperationStatus) => void;
+  onReset: () => void;
 }) {
-  const disabled = !canEdit || Boolean(saving);
+  const disabled = !canEdit || Boolean(saving) || resetSaving;
 
   function confirmAndChange(operationStatus: OperationStatus) {
     const label = operationStatus === 'OPEN' ? '운영중' : '마감';
@@ -418,7 +469,7 @@ function BulkOperationControls({
         ) : null}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-3">
         <button
           type="button"
           disabled={disabled}
@@ -434,6 +485,14 @@ function BulkOperationControls({
           className="min-h-14 rounded-lg bg-slate-800 px-3 text-base font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saving === 'CLOSED' ? '변경 중' : '전체 마감'}
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onReset}
+          className="col-span-2 min-h-14 rounded-lg border border-slate-300 bg-white px-3 text-base font-black text-slate-950 shadow-sm disabled:cursor-not-allowed disabled:opacity-60 lg:col-span-1"
+        >
+          {resetSaving ? '초기화 중' : '전체 초기화'}
         </button>
       </div>
     </section>

@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { appPath, isStaticDemo } from '@/lib/clientConfig';
-import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
+import { apiPath, appPath, isStaticDemo } from '@/lib/clientConfig';
+import { REALTIME_FALLBACK_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
 import { getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
 import { formatTime, helpTypeLabels } from '@/lib/statusLabels';
 import type { Incident } from '@/lib/types';
+import { useRealtimeRefresh } from '@/lib/useRealtimeRefresh';
 
 type HelpNotice = Incident & {
   boothName?: string;
@@ -35,7 +36,7 @@ export default function GlobalHelpNotifier() {
     try {
       const params = new URLSearchParams();
       if (currentToken) params.set('t', currentToken);
-      const response = await fetch(`${appPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
+      const response = await fetch(`${apiPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
         cache: 'no-store'
       });
       if (!response.ok) return null;
@@ -89,18 +90,21 @@ export default function GlobalHelpNotifier() {
   useEffect(() => {
     setNotificationPermission('Notification' in window ? Notification.permission : 'unsupported');
     void checkForNewHelp();
-
-    const id = window.setInterval(() => void checkForNewHelp(), Math.max(STATUS_REFRESH_INTERVAL_MS, 3000));
     const onHelpSignal = () => void checkForNewHelp();
     window.addEventListener('storage', onHelpSignal);
     window.addEventListener('smartyouth-help-created', onHelpSignal);
 
     return () => {
-      window.clearInterval(id);
       window.removeEventListener('storage', onHelpSignal);
       window.removeEventListener('smartyouth-help-created', onHelpSignal);
     };
   }, [checkForNewHelp]);
+
+  useRealtimeRefresh({
+    enabled: true,
+    onRefresh: checkForNewHelp,
+    fallbackMs: REALTIME_FALLBACK_REFRESH_INTERVAL_MS
+  });
 
   async function enableBrowserNotification() {
     if (!('Notification' in window)) return;

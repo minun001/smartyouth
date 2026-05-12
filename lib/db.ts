@@ -317,6 +317,62 @@ export async function updateAllBoothOperationStatuses(operationStatus: Operation
   );
 }
 
+export async function resetAllOperations() {
+  const now = new Date().toISOString();
+
+  if (getDataMode() === 'demo') {
+    const store = getDemoStore();
+    const clearedHelpCount = store.incidents.length;
+    const clearedLogCount = store.logs.length;
+
+    store.statuses = new Map(store.booths.map((booth) => [booth.boothNo, createInitialStatus(booth.boothNo, now)]));
+    store.incidents = [];
+    store.logs = [];
+
+    return {
+      boothCount: store.statuses.size,
+      clearedHelpCount,
+      clearedLogCount,
+      resetAt: now
+    };
+  }
+
+  const supabase = getSupabase();
+  const boothRows = await listBooths();
+
+  const [{ count: helpCount, error: helpCountError }, { count: logCount, error: logCountError }] = await Promise.all([
+    supabase.from('incidents').select('id', { count: 'exact', head: true }),
+    supabase.from('booth_status_logs').select('id', { count: 'exact', head: true })
+  ]);
+  if (helpCountError) throw helpCountError;
+  if (logCountError) throw logCountError;
+
+  const { error: incidentDeleteError } = await supabase
+    .from('incidents')
+    .delete()
+    .neq('id', '00000000-0000-0000-0000-000000000000');
+  if (incidentDeleteError) throw incidentDeleteError;
+
+  const { error: logDeleteError } = await supabase
+    .from('booth_status_logs')
+    .delete()
+    .neq('id', '00000000-0000-0000-0000-000000000000');
+  if (logDeleteError) throw logDeleteError;
+
+  const initialStatuses = boothRows.map((booth) => toDbStatus(createInitialStatus(booth.boothNo, now)));
+  const { error: statusError } = await supabase
+    .from('booth_statuses')
+    .upsert(initialStatuses, { onConflict: 'booth_no' });
+  if (statusError) throw statusError;
+
+  return {
+    boothCount: initialStatuses.length,
+    clearedHelpCount: helpCount ?? 0,
+    clearedLogCount: logCount ?? 0,
+    resetAt: now
+  };
+}
+
 export async function createOrUpdateIncident(
   boothNo: number,
   type: HelpType,

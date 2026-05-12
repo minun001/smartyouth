@@ -4,9 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import AppHeader from './AppHeader';
 import BottomNav from './BottomNav';
 import MapView from './MapView';
-import { appPath, isStaticDemo } from '@/lib/clientConfig';
-import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
+import { apiPath, isStaticDemo } from '@/lib/clientConfig';
 import { getInitialStaticStatus, getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
+import { useRealtimeRefresh } from '@/lib/useRealtimeRefresh';
 
 export default function MapPageClient() {
   const [data, setData] = useState<ClientStatusResponse | null>(() => (isStaticDemo ? getInitialStaticStatus() : null));
@@ -20,7 +20,7 @@ export default function MapPageClient() {
         return;
       }
 
-      const response = await fetch(appPath('/api/status'), { cache: 'no-store' });
+      const response = await fetch(apiPath('/api/status'), { cache: 'no-store' });
       if (!response.ok) {
         setError('지도 정보를 불러오지 못했습니다.');
         return;
@@ -34,9 +34,9 @@ export default function MapPageClient() {
 
   useEffect(() => {
     void loadStatus();
-    const id = window.setInterval(() => void loadStatus(), STATUS_REFRESH_INTERVAL_MS);
-    return () => window.clearInterval(id);
   }, [loadStatus]);
+
+  useRealtimeRefresh({ enabled: Boolean(data), onRefresh: loadStatus });
 
   return (
     <div className="min-h-screen text-slate-950">

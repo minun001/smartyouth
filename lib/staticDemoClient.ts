@@ -254,6 +254,27 @@ export async function patchStaticAllOperationStatuses(
   return { statuses: state.statuses, savedAt: now };
 }
 
+export async function resetStaticOperations(token: string | null | undefined) {
+  if (!canWrite(token).hq) throw new Error('수정 권한 없음');
+
+  const now = new Date().toISOString();
+  const state = readState(now);
+  const clearedHelpCount = state.incidents.length;
+  const clearedLogCount = state.logs.length;
+  const resetState = createFallbackState(now);
+
+  writeState(resetState);
+  window.dispatchEvent(new CustomEvent('smartyouth-help-reset'));
+  window.dispatchEvent(new CustomEvent('smartyouth-status-reset'));
+
+  return {
+    boothCount: resetState.statuses.length,
+    clearedHelpCount,
+    clearedLogCount,
+    resetAt: now
+  };
+}
+
 export async function createStaticHelp(
   boothNo: number,
   token: string | null | undefined,

@@ -1,0 +1,20 @@
+name = "smartyouth-api"
+main = "worker/src/index.ts"
+compatibility_date = "2025-12-01"
+workers_dev = true
+
+[vars]
+ALLOWED_ORIGIN = "https://minun001.github.io,http://localhost:3000,http://localhost:3001"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "smartyouth-db"
+database_id = "REPLACE_WITH_CLOUDFLARE_D1_DATABASE_ID"
+
+[[durable_objects.bindings]]
+name = "REALTIME"
+class_name = "RealtimeRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RealtimeRoom"]
