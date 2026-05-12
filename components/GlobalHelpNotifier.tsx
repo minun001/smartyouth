@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiPath, appPath, isStaticDemo } from '@/lib/clientConfig';
+import { getHelpQueueHref } from '@/lib/helpNavigation';
 import { REALTIME_FALLBACK_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
 import { getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
 import { formatTime, helpTypeLabels } from '@/lib/statusLabels';
@@ -21,14 +22,22 @@ export default function GlobalHelpNotifier() {
   const initializedRef = useRef(false);
   const knownIncidentIdsRef = useRef<Set<string>>(new Set());
 
-  const currentToken = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return new URLSearchParams(window.location.search).get('t');
+  const currentRoute = useMemo(() => {
+    if (typeof window === 'undefined') return { pathname: '', token: null };
+    return {
+      pathname: window.location.pathname,
+      token: new URLSearchParams(window.location.search).get('t')
+    };
   }, []);
+  const currentToken = currentRoute.token;
 
   const helpHref = useMemo(() => {
-    return appPath(`/help${currentToken ? `?t=${encodeURIComponent(currentToken)}` : ''}`);
-  }, [currentToken]);
+    return getHelpQueueHref({
+      pathname: currentRoute.pathname,
+      staticDemo: isStaticDemo,
+      token: currentToken
+    });
+  }, [currentRoute.pathname, currentToken]);
 
   const loadStatus = useCallback(async (): Promise<ClientStatusResponse | null> => {
     if (isStaticDemo) return getStaticStatus(currentToken);
