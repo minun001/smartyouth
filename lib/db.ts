@@ -317,15 +317,23 @@ export async function updateAllBoothOperationStatuses(operationStatus: Operation
   );
 }
 
-export async function createOrUpdateIncident(boothNo: number, type: HelpType, memo: string | undefined, source: string) {
+export async function createOrUpdateIncident(
+  boothNo: number,
+  type: HelpType,
+  memo: string | undefined,
+  source: string,
+  options?: { forceCreate?: boolean }
+) {
   await updateBoothStatus(boothNo, { helpRequested: true, helpType: type, memo }, source);
   const now = new Date().toISOString();
 
   if (getDataMode() === 'demo') {
     const store = getDemoStore();
-    const existing = store.incidents.find(
-      (incident) => incident.boothNo === boothNo && incident.type === type && incident.status !== 'RESOLVED'
-    );
+    const existing = options?.forceCreate
+      ? undefined
+      : store.incidents.find(
+          (incident) => incident.boothNo === boothNo && incident.type === type && incident.status !== 'RESOLVED'
+        );
 
     if (existing) {
       existing.memo = memo?.trim() || existing.memo;
@@ -348,18 +356,20 @@ export async function createOrUpdateIncident(boothNo: number, type: HelpType, me
   }
 
   const supabase = getSupabase();
-  const { data: existingRows, error: selectError } = await supabase
-    .from('incidents')
-    .select('*')
-    .eq('booth_no', boothNo)
-    .eq('type', type)
-    .in('status', ['NEW', 'IN_PROGRESS'])
-    .order('created_at', { ascending: false })
-    .limit(1);
+  const existingRows = options?.forceCreate
+    ? []
+    : await supabase
+        .from('incidents')
+        .select('*')
+        .eq('booth_no', boothNo)
+        .eq('type', type)
+        .in('status', ['NEW', 'IN_PROGRESS'])
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-  if (selectError) throw selectError;
+  if (!Array.isArray(existingRows) && existingRows.error) throw existingRows.error;
 
-  const existing = existingRows?.[0];
+  const existing = Array.isArray(existingRows) ? undefined : existingRows.data?.[0];
   if (existing) {
     const { data, error } = await supabase
       .from('incidents')
@@ -432,7 +442,7 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
 
     if (countError) throw countError;
     if (!count) {
-      await updateBoothStatus(incident.boothNo, { helpRequested: false, helpType: undefined }, 'hq');
+      await updateBoothStatus(incident.boothNo, { helpRequested: false, helpType: undefined, memo: '' }, 'hq');
     }
   }
 

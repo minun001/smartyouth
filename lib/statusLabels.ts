@@ -69,13 +69,13 @@ export const materialStatusOrder: MaterialStatus[] = ['OK', 'LOW', 'OUT'];
 
 export const helpTypeLabels: Record<HelpType, string> = {
   STAFF: '인력지원',
-  MATERIAL: '도움요청',
+  MATERIAL: '재료요청',
   EQUIPMENT: '장비문제',
   SAFETY: '안전문제',
   ETC: '기타'
 };
 
-export const helpTypeOrder: HelpType[] = ['STAFF', 'EQUIPMENT', 'SAFETY', 'ETC'];
+export const helpTypeOrder: HelpType[] = ['STAFF', 'MATERIAL', 'EQUIPMENT', 'SAFETY', 'ETC'];
 
 export const incidentStatusLabels: Record<IncidentStatus, string> = {
   NEW: '새 요청',

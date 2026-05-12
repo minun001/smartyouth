@@ -223,7 +223,8 @@ export async function createStaticHelp(
   boothNo: number,
   token: string | null | undefined,
   type: HelpType,
-  memo?: string
+  memo?: string,
+  options?: { forceCreate?: boolean }
 ) {
   const access = canWrite(token, boothNo);
   if (!access.canEditBooth) throw new Error('수정 권한 없음');
@@ -235,9 +236,11 @@ export async function createStaticHelp(
   });
   const state = readState();
   const now = statusResult.savedAt;
-  const existing = state.incidents.find(
-    (incident) => incident.boothNo === boothNo && incident.type === type && incident.status !== 'RESOLVED'
-  );
+  const existing = options?.forceCreate
+    ? undefined
+    : state.incidents.find(
+        (incident) => incident.boothNo === boothNo && incident.type === type && incident.status !== 'RESOLVED'
+      );
 
   if (existing) {
     existing.status = 'NEW';
@@ -283,6 +286,7 @@ export async function patchStaticIncident(token: string | null | undefined, inci
         ...current,
         helpRequested: false,
         helpType: undefined,
+        memo: undefined,
         updatedAt: now
       };
       if (index >= 0) state.statuses[index] = next;

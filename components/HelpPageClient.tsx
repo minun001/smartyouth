@@ -1,18 +1,27 @@
 'use client';
 
-import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react';
 import AppHeader from './AppHeader';
 import BottomNav from './BottomNav';
 import { appPath, isStaticDemo } from '@/lib/clientConfig';
 import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
-import { formatTime, helpTypeLabels } from '@/lib/statusLabels';
+import { formatTime, helpTypeLabels, helpTypeOrder } from '@/lib/statusLabels';
 import {
+  createStaticHelp,
   getInitialStaticStatus,
   getStaticStatus,
   patchStaticIncident,
   type ClientStatusResponse
 } from '@/lib/staticDemoClient';
-import type { Incident, IncidentStatus } from '@/lib/types';
+import type { HelpType, Incident, IncidentStatus } from '@/lib/types';
 
 type HelpPageClientProps = {
   token?: string;
@@ -26,6 +35,11 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [isOverCompleteZone, setIsOverCompleteZone] = useState(false);
+  const [requestBoothNo, setRequestBoothNo] = useState('');
+  const [requestType, setRequestType] = useState<HelpType>('ETC');
+  const [requestMemo, setRequestMemo] = useState('');
+  const [requestSaving, setRequestSaving] = useState(false);
+  const [requestSavedMessage, setRequestSavedMessage] = useState<string | null>(null);
   const completeZoneRef = useRef<HTMLDivElement | null>(null);
 
   const loadStatus = useCallback(async () => {
@@ -70,6 +84,64 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
       b.updatedAt.localeCompare(a.updatedAt)
     );
   }, [data]);
+
+  const selectedRequestBoothName = useMemo(() => {
+    const boothNo = Number(requestBoothNo);
+    if (!Number.isInteger(boothNo)) return undefined;
+    return boothNameByNo.get(boothNo);
+  }, [boothNameByNo, requestBoothNo]);
+
+  async function submitHelpRequest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!data?.access.hq || requestSaving) return;
+
+    const boothNo = Number(requestBoothNo);
+    const memo = requestMemo.trim();
+
+    if (!Number.isInteger(boothNo) || !boothNameByNo.has(boothNo)) {
+      setError('부스 번호를 다시 확인해주세요.');
+      return;
+    }
+
+    if (!memo) {
+      setError('도움이 필요한 내용을 적어주세요.');
+      return;
+    }
+
+    setRequestSaving(true);
+    setRequestSavedMessage(null);
+    setError(null);
+
+    try {
+      if (isStaticDemo) {
+        const result = await createStaticHelp(boothNo, token, requestType, memo, { forceCreate: true });
+        setRequestSavedMessage(`등록됨 · ${formatTime(result.savedAt)}`);
+        setRequestMemo('');
+        await loadStatus();
+        return;
+      }
+
+      const suffix = token ? `?t=${encodeURIComponent(token)}` : '';
+      const response = await fetch(`${appPath(`/api/booths/${boothNo}/help`)}${suffix}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: requestType, memo, forceCreate: true })
+      });
+
+      if (!response.ok) {
+        throw new Error('Help request failed.');
+      }
+
+      const result = (await response.json()) as { savedAt?: string };
+      setRequestSavedMessage(`등록됨 · ${formatTime(result.savedAt)}`);
+      setRequestMemo('');
+      await loadStatus();
+    } catch {
+      setError('도움 요청 등록에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setRequestSaving(false);
+    }
+  }
 
   async function setIncidentStatus(id: string, status: IncidentStatus) {
     if (!data?.access.hq) return;
@@ -215,11 +287,11 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
             <div>
               <div className="text-xs font-black uppercase tracking-[0.16em] text-[var(--asan-yellow)]">HQ Help Queue</div>
               <h1 className="mt-2 text-3xl font-black leading-tight">현장 도움 요청</h1>
-              <p className="mt-2 text-sm font-bold text-white">도움 요청을 놓치지 않고 현장에서 바로 처리합니다.</p>
+              <p className="mt-2 text-sm font-bold text-white">부스 번호와 내용을 등록하고 완료까지 한 화면에서 처리합니다.</p>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:min-w-[240px]">
               <QueueMetric label="처리할 일" value={activeCount} danger={activeCount > 0} />
-              <QueueMetric label="처리 기록" value={resolvedCount} />
+              <QueueMetric label="완료" value={resolvedCount} />
             </div>
           </div>
         </section>
@@ -238,6 +310,20 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
         {data ? (
           <>
+            <HelpRequestForm
+              boothNo={requestBoothNo}
+              helpType={requestType}
+              memo={requestMemo}
+              selectedBoothName={selectedRequestBoothName}
+              canSubmit={data.access.hq}
+              saving={requestSaving}
+              savedMessage={requestSavedMessage}
+              onBoothNoChange={setRequestBoothNo}
+              onHelpTypeChange={setRequestType}
+              onMemoChange={setRequestMemo}
+              onSubmit={submitHelpRequest}
+            />
+
             <section className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-xl font-black text-slate-950">처리할 요청</h2>
@@ -361,7 +447,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
             <section className="space-y-3 rounded-lg border border-[var(--line)] bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xl font-black text-slate-950">처리 기록</h2>
+                <h2 className="text-xl font-black text-slate-950">완료</h2>
                 <span className="rounded-md bg-[var(--brand)] px-3 py-1 text-sm font-black text-white">
                   {resolvedCount}
                 </span>
@@ -382,7 +468,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-lg bg-slate-50 p-4 text-sm font-bold text-slate-500">아직 처리 기록이 없습니다.</div>
+                <div className="rounded-lg bg-slate-50 p-4 text-sm font-bold text-slate-500">아직 완료된 요청이 없습니다.</div>
               )}
             </section>
           </>
@@ -390,6 +476,123 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
       </main>
       <BottomNav token={token} hqMode={data?.access.hq ?? false} />
     </div>
+  );
+}
+
+function HelpRequestForm({
+  boothNo,
+  helpType,
+  memo,
+  selectedBoothName,
+  canSubmit,
+  saving,
+  savedMessage,
+  onBoothNoChange,
+  onHelpTypeChange,
+  onMemoChange,
+  onSubmit
+}: {
+  boothNo: string;
+  helpType: HelpType;
+  memo: string;
+  selectedBoothName?: string;
+  canSubmit: boolean;
+  saving: boolean;
+  savedMessage: string | null;
+  onBoothNoChange: (value: string) => void;
+  onHelpTypeChange: (value: HelpType) => void;
+  onMemoChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <section className="rounded-lg border border-[var(--line)] bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-black text-slate-950">새 도움 요청</h2>
+          <p className="mt-1 text-sm font-bold text-slate-600">도움이 필요한 부스 번호와 내용을 적어주세요.</p>
+        </div>
+        {savedMessage ? (
+          <div className="rounded-md bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-700">{savedMessage}</div>
+        ) : null}
+      </div>
+
+      <form className="mt-4 space-y-4" onSubmit={onSubmit}>
+        <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
+          <label className="block">
+            <span className="text-sm font-black text-slate-700">부스 번호</span>
+            <input
+              type="number"
+              min={1}
+              max={44}
+              inputMode="numeric"
+              value={boothNo}
+              disabled={!canSubmit || saving}
+              onChange={(event) => onBoothNoChange(event.target.value)}
+              className="mt-2 min-h-12 w-full rounded-lg border border-slate-200 bg-white px-3 text-lg font-black text-slate-950 disabled:bg-slate-50 disabled:text-slate-400"
+              placeholder="예: 12"
+            />
+          </label>
+
+          <div>
+            <div className="text-sm font-black text-slate-700">요청 종류</div>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {helpTypeOrder.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  disabled={!canSubmit || saving}
+                  onClick={() => onHelpTypeChange(type)}
+                  className={`min-h-12 rounded-lg border px-2 text-sm font-black disabled:cursor-not-allowed disabled:opacity-60 ${
+                    helpType === type
+                      ? 'border-red-500 bg-red-500 text-white'
+                      : 'border-slate-200 bg-white text-slate-700'
+                  }`}
+                >
+                  {helpTypeLabels[type]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {selectedBoothName ? (
+          <div className="rounded-md bg-sky-50 px-3 py-2 text-sm font-black text-[var(--brand-strong)]">
+            선택 부스 · {selectedBoothName}
+          </div>
+        ) : boothNo ? (
+          <div className="rounded-md bg-red-50 px-3 py-2 text-sm font-black text-red-700">
+            등록된 부스 번호인지 확인해주세요.
+          </div>
+        ) : null}
+
+        <label className="block">
+          <span className="text-sm font-black text-slate-700">내용</span>
+          <textarea
+            value={memo}
+            disabled={!canSubmit || saving}
+            onChange={(event) => onMemoChange(event.target.value)}
+            maxLength={300}
+            rows={3}
+            className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-3 text-base font-bold leading-6 text-slate-950 disabled:bg-slate-50 disabled:text-slate-400"
+            placeholder="필요한 도움을 짧게 적어주세요."
+          />
+        </label>
+
+        {!canSubmit ? (
+          <div className="rounded-md bg-red-50 px-3 py-2 text-sm font-black text-red-700">
+            HQ 권한 링크에서만 도움 요청을 등록하고 완료 처리할 수 있습니다.
+          </div>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={!canSubmit || saving}
+          className="min-h-14 w-full rounded-lg bg-gradient-to-r from-red-500 to-orange-500 text-base font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {saving ? '등록 중' : '도움 요청 등록'}
+        </button>
+      </form>
+    </section>
   );
 }
 
