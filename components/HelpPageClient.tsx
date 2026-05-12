@@ -1,22 +1,32 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppHeader from './AppHeader';
 import BottomNav from './BottomNav';
 import { appPath, isStaticDemo } from '@/lib/clientConfig';
 import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
-import { formatTime, helpTypeLabels, incidentStatusLabels } from '@/lib/statusLabels';
-import { getStaticStatus, patchStaticIncident, type ClientStatusResponse } from '@/lib/staticDemoClient';
-import type { IncidentStatus } from '@/lib/types';
+import { formatTime, helpTypeLabels } from '@/lib/statusLabels';
+import {
+  getInitialStaticStatus,
+  getStaticStatus,
+  patchStaticIncident,
+  type ClientStatusResponse
+} from '@/lib/staticDemoClient';
+import type { Incident, IncidentStatus } from '@/lib/types';
 
 type HelpPageClientProps = {
   token?: string;
 };
 
 export default function HelpPageClient({ token }: HelpPageClientProps) {
-  const [data, setData] = useState<ClientStatusResponse | null>(() => (isStaticDemo ? getStaticStatus(token) : null));
+  const [data, setData] = useState<ClientStatusResponse | null>(() =>
+    isStaticDemo ? getInitialStaticStatus(token) : null
+  );
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [isOverCompleteZone, setIsOverCompleteZone] = useState(false);
+  const completeZoneRef = useRef<HTMLDivElement | null>(null);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -51,6 +61,16 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
     return new Map(data?.booths.map((booth) => [booth.boothNo, booth.name]) ?? []);
   }, [data]);
 
+  const activeIncidents = useMemo(() => {
+    return sortActiveIncidents(data?.incidents.filter((incident) => incident.status !== 'RESOLVED') ?? []);
+  }, [data]);
+
+  const resolvedIncidents = useMemo(() => {
+    return (data?.incidents.filter((incident) => incident.status === 'RESOLVED') ?? []).sort((a, b) =>
+      b.updatedAt.localeCompare(a.updatedAt)
+    );
+  }, [data]);
+
   async function setIncidentStatus(id: string, status: IncidentStatus) {
     if (!data?.access.hq) return;
     setSavingId(id);
@@ -83,13 +103,108 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
     await loadStatus();
   }
 
-  const groups: { status: IncidentStatus; title: string }[] = [
-    { status: 'NEW', title: '새 요청' },
-    { status: 'IN_PROGRESS', title: '처리중' },
-    { status: 'RESOLVED', title: '완료' }
-  ];
-  const newCount = data?.incidents.filter((incident) => incident.status === 'NEW').length ?? 0;
-  const progressCount = data?.incidents.filter((incident) => incident.status === 'IN_PROGRESS').length ?? 0;
+  function isCoordinateOverCompleteZone(clientX: number, clientY: number) {
+    const rect = completeZoneRef.current?.getBoundingClientRect();
+    if (!rect) return false;
+    return (
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom
+    );
+  }
+
+  function isPointerOverCompleteZone(event: ReactPointerEvent) {
+    return isCoordinateOverCompleteZone(event.clientX, event.clientY);
+  }
+
+  function startDrag(event: ReactPointerEvent<HTMLElement>, incident: Incident) {
+    if (!data?.access.hq || savingId || incident.status === 'RESOLVED') return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDraggingId(incident.id);
+    setIsOverCompleteZone(false);
+  }
+
+  function moveDrag(event: ReactPointerEvent<HTMLElement>) {
+    if (!draggingId) return;
+    event.preventDefault();
+    setIsOverCompleteZone(isPointerOverCompleteZone(event));
+  }
+
+  function cancelDrag(event: ReactPointerEvent<HTMLElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setDraggingId(null);
+    setIsOverCompleteZone(false);
+  }
+
+  function endDrag(event: ReactPointerEvent<HTMLElement>, incident: Incident) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const shouldComplete = draggingId === incident.id && isCoordinateOverCompleteZone(event.clientX, event.clientY);
+    setDraggingId(null);
+    setIsOverCompleteZone(false);
+
+    if (shouldComplete) {
+      void setIncidentStatus(incident.id, 'RESOLVED');
+    }
+  }
+
+  useEffect(() => {
+    if (!draggingId) return undefined;
+
+    const finishDrag = (clientX: number, clientY: number) => {
+      const shouldComplete = isCoordinateOverCompleteZone(clientX, clientY);
+      const incidentId = draggingId;
+      setDraggingId(null);
+      setIsOverCompleteZone(false);
+
+      if (shouldComplete) {
+        void setIncidentStatus(incidentId, 'RESOLVED');
+      }
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      event.preventDefault();
+      setIsOverCompleteZone(isCoordinateOverCompleteZone(event.clientX, event.clientY));
+    };
+    const handlePointerUp = (event: PointerEvent) => finishDrag(event.clientX, event.clientY);
+    const handleMouseMove = (event: MouseEvent) => setIsOverCompleteZone(isCoordinateOverCompleteZone(event.clientX, event.clientY));
+    const handleMouseUp = (event: MouseEvent) => finishDrag(event.clientX, event.clientY);
+    const handleTouchMove = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      if (touch) {
+        event.preventDefault();
+        setIsOverCompleteZone(isCoordinateOverCompleteZone(touch.clientX, touch.clientY));
+      }
+    };
+    const handleTouchEnd = (event: TouchEvent) => {
+      const touch = event.changedTouches[0];
+      if (touch) finishDrag(touch.clientX, touch.clientY);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: false });
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [draggingId]);
+
+  const activeCount = activeIncidents.length;
+  const resolvedCount = resolvedIncidents.length;
 
   return (
     <div className="min-h-screen text-slate-950">
@@ -100,11 +215,11 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
             <div>
               <div className="text-xs font-black uppercase tracking-[0.16em] text-[var(--asan-yellow)]">HQ Help Queue</div>
               <h1 className="mt-2 text-3xl font-black leading-tight">현장 도움 요청</h1>
-              <p className="mt-2 text-sm font-bold text-white">새 요청을 놓치지 않고 처리 상태를 바로 갱신합니다.</p>
+              <p className="mt-2 text-sm font-bold text-white">도움 요청을 놓치지 않고 현장에서 바로 처리합니다.</p>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:min-w-[240px]">
-              <QueueMetric label="새 요청" value={newCount} danger={newCount > 0} />
-              <QueueMetric label="처리중" value={progressCount} />
+              <QueueMetric label="처리할 일" value={activeCount} danger={activeCount > 0} />
+              <QueueMetric label="처리 기록" value={resolvedCount} />
             </div>
           </div>
         </section>
@@ -121,27 +236,31 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
           <div className="rounded-lg bg-white p-6 text-center text-base font-black text-slate-500">불러오는 중</div>
         ) : null}
 
-        {data
-          ? groups.map((group) => {
-              const incidents = data.incidents.filter((incident) => incident.status === group.status);
-              const isNew = group.status === 'NEW';
-              return (
-                <section
-                  key={group.status}
-                  className={`space-y-3 rounded-lg border p-4 shadow-sm ${
-                    isNew && incidents.length > 0 ? 'border-red-200 bg-red-50' : 'border-[var(--line)] bg-white'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 className={`text-xl font-black ${isNew ? 'text-red-700' : 'text-slate-950'}`}>{group.title}</h2>
-                    <span className={`${isNew ? 'bg-red-600' : 'bg-[var(--brand)]'} rounded-md px-3 py-1 text-sm font-black text-white`}>
-                      {incidents.length}
-                    </span>
-                  </div>
-                  {incidents.length > 0 ? (
-                    <div className="grid gap-3 lg:grid-cols-2">
-                      {incidents.map((incident) => (
-                      <article key={incident.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        {data ? (
+          <>
+            <section className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-xl font-black text-slate-950">처리할 요청</h2>
+                <span className="rounded-md bg-red-600 px-3 py-1 text-sm font-black text-white">{activeCount}</span>
+              </div>
+
+              {activeIncidents.length > 0 ? (
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {activeIncidents.map((incident) => {
+                    const isDragging = draggingId === incident.id;
+                    const canHandle = data.access.hq && savingId !== incident.id;
+
+                    return (
+                      <article
+                        key={incident.id}
+                        className={`rounded-lg border bg-white p-4 shadow-sm transition ${
+                          isDragging
+                            ? 'scale-[0.99] border-[var(--asan-blue)] shadow-[0_18px_48px_rgba(0,96,176,0.22)]'
+                            : incident.status === 'NEW'
+                              ? 'border-red-200'
+                              : 'border-[var(--line)]'
+                        }`}
+                      >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="text-sm font-black text-slate-500">부스 {incident.boothNo}</div>
@@ -149,48 +268,145 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                               {boothNameByNo.get(incident.boothNo) ?? '부스'}
                             </div>
                           </div>
-                          <div className="rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">
+                          <div className="shrink-0 rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">
                             {helpTypeLabels[incident.type]}
                           </div>
                         </div>
+
                         {incident.memo ? (
-                          <div className="mt-3 rounded-md bg-slate-50 p-3 text-sm font-bold text-slate-700">{incident.memo}</div>
+                          <div className="mt-3 rounded-md bg-slate-50 p-3 text-sm font-bold text-slate-700">
+                            {incident.memo}
+                          </div>
                         ) : null}
-                        <div className="mt-3 text-xs font-bold text-slate-500">
-                          {incidentStatusLabels[incident.status]} · 요청 {formatTime(incident.createdAt)}
+
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
+                          <span
+                            className={`rounded-md px-2 py-1 font-black ${
+                              incident.status === 'NEW'
+                                ? 'bg-red-50 text-red-700'
+                                : 'bg-sky-50 text-[var(--brand-strong)]'
+                            }`}
+                          >
+                            {incident.status === 'NEW' ? '대기' : '처리 중'}
+                          </span>
+                          <span>요청 {formatTime(incident.createdAt)}</span>
                         </div>
-                        <div className="mt-4 grid grid-cols-2 gap-2">
+
+                        <div
+                          role="button"
+                          tabIndex={canHandle ? 0 : -1}
+                          aria-label={`부스 ${incident.boothNo} 도움 요청 완료 처리`}
+                          onPointerDown={(event) => startDrag(event, incident)}
+                          onPointerMove={moveDrag}
+                          onPointerUp={(event) => endDrag(event, incident)}
+                          onPointerCancel={cancelDrag}
+                          onKeyDown={(event) => {
+                            if (canHandle && (event.key === 'Enter' || event.key === ' ')) {
+                              event.preventDefault();
+                              void setIncidentStatus(incident.id, 'RESOLVED');
+                            }
+                          }}
+                          className={`mt-4 flex min-h-14 touch-none select-none items-center justify-between rounded-lg border-2 border-dashed px-4 text-base font-black transition ${
+                            canHandle
+                              ? 'cursor-grab border-[var(--asan-blue)] bg-sky-50 text-[var(--brand-strong)] active:cursor-grabbing'
+                              : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
+                          }`}
+                        >
+                          <span>{savingId === incident.id ? '처리 중' : '잡고 끌기'}</span>
+                          <span className="rounded-md bg-white px-3 py-1 text-sm">완료</span>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2">
                           <button
                             type="button"
                             disabled={!data.access.hq || savingId === incident.id || incident.status === 'IN_PROGRESS'}
                             onClick={() => void setIncidentStatus(incident.id, 'IN_PROGRESS')}
                             className="min-h-12 rounded-lg border border-slate-200 bg-white text-base font-black text-slate-700 disabled:opacity-50"
                           >
-                            처리중
+                            처리 시작
                           </button>
                           <button
                             type="button"
-                            disabled={!data.access.hq || savingId === incident.id || incident.status === 'RESOLVED'}
+                            disabled={!data.access.hq || savingId === incident.id}
                             onClick={() => void setIncidentStatus(incident.id, 'RESOLVED')}
-                            className="min-h-12 rounded-lg bg-gradient-to-r from-[var(--asan-blue)] to-[var(--asan-sky)] text-base font-black text-white disabled:opacity-50"
+                            className="min-h-12 rounded-lg bg-slate-900 text-base font-black text-white disabled:opacity-50"
                           >
-                            완료
+                            완료 처리
                           </button>
                         </div>
                       </article>
-                      ))}
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-[var(--line)] bg-white p-5 text-center text-sm font-bold text-slate-500 shadow-sm">
+                  처리할 도움 요청이 없습니다.
+                </div>
+              )}
+            </section>
+
+            <div
+              ref={completeZoneRef}
+              className={`sticky bottom-[calc(env(safe-area-inset-bottom)+88px)] z-30 rounded-lg border-2 border-dashed p-4 text-center shadow-[0_18px_48px_rgba(15,23,42,0.18)] transition ${
+                isOverCompleteZone
+                  ? 'border-emerald-500 bg-emerald-500 text-white'
+                  : draggingId
+                    ? 'border-[var(--asan-blue)] bg-white text-[var(--brand-strong)]'
+                    : 'border-slate-300 bg-white text-slate-700'
+              }`}
+            >
+              <div className="text-lg font-black">{isOverCompleteZone ? '놓으면 완료' : '완료 영역'}</div>
+              <div className="mt-1 text-xs font-bold opacity-80">요청 카드를 이곳으로 끌어놓기</div>
+            </div>
+
+            <section className="space-y-3 rounded-lg border border-[var(--line)] bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-xl font-black text-slate-950">처리 기록</h2>
+                <span className="rounded-md bg-[var(--brand)] px-3 py-1 text-sm font-black text-white">
+                  {resolvedCount}
+                </span>
+              </div>
+              {resolvedIncidents.length > 0 ? (
+                <div className="space-y-2">
+                  {resolvedIncidents.slice(0, 8).map((incident) => (
+                    <div
+                      key={incident.id}
+                      className="flex items-center justify-between gap-3 rounded-md bg-slate-50 p-3 text-sm font-bold text-slate-600"
+                    >
+                      <div className="min-w-0 truncate">
+                        <span className="font-black text-slate-950">부스 {incident.boothNo}</span> ·{' '}
+                        {helpTypeLabels[incident.type]}
+                      </div>
+                      <span className="shrink-0 text-xs font-black text-slate-500">{formatTime(incident.updatedAt)}</span>
                     </div>
-                  ) : (
-                    <div className="rounded-lg bg-white p-4 text-sm font-bold text-slate-500">없음</div>
-                  )}
-                </section>
-              );
-            })
-          : null}
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg bg-slate-50 p-4 text-sm font-bold text-slate-500">아직 처리 기록이 없습니다.</div>
+              )}
+            </section>
+          </>
+        ) : null}
       </main>
       <BottomNav token={token} hqMode={data?.access.hq ?? false} />
     </div>
   );
+}
+
+function sortActiveIncidents(incidents: Incident[]) {
+  const statusWeight: Record<IncidentStatus, number> = {
+    NEW: 0,
+    IN_PROGRESS: 1,
+    RESOLVED: 2
+  };
+
+  return [...incidents].sort((a, b) => {
+    if (statusWeight[a.status] !== statusWeight[b.status]) {
+      return statusWeight[a.status] - statusWeight[b.status];
+    }
+
+    return b.createdAt.localeCompare(a.createdAt);
+  });
 }
 
 function QueueMetric({ label, value, danger }: { label: string; value: number; danger?: boolean }) {
