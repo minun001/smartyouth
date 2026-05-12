@@ -473,3 +473,47 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
 
   return incident;
 }
+
+export async function resetAllHelpRequests() {
+  const now = new Date().toISOString();
+
+  if (getDataMode() === 'demo') {
+    const store = getDemoStore();
+    const clearedCount = store.incidents.length;
+    store.incidents = [];
+    for (const [boothNo, status] of store.statuses.entries()) {
+      if (status.helpRequested || status.helpType || status.memo) {
+        store.statuses.set(boothNo, {
+          ...status,
+          helpRequested: false,
+          helpType: undefined,
+          memo: undefined,
+          updatedAt: now
+        });
+      }
+    }
+    return { clearedCount, resetAt: now };
+  }
+
+  const supabase = getSupabase();
+  const { count, error: countError } = await supabase
+    .from('incidents')
+    .select('id', { count: 'exact', head: true });
+  if (countError) throw countError;
+
+  const { error: deleteError } = await supabase.from('incidents').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if (deleteError) throw deleteError;
+
+  const { error: statusError } = await supabase
+    .from('booth_statuses')
+    .update({
+      help_requested: false,
+      help_type: null,
+      memo: null,
+      updated_at: now
+    })
+    .neq('booth_no', -1);
+  if (statusError) throw statusError;
+
+  return { clearedCount: count ?? 0, resetAt: now };
+}

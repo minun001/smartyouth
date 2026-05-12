@@ -317,3 +317,28 @@ export async function patchStaticIncident(token: string | null | undefined, inci
   writeState(state);
   return { incident, savedAt: now };
 }
+
+export async function resetStaticHelpRequests(token: string | null | undefined) {
+  if (!canWrite(token).hq) throw new Error('수정 권한 없음');
+
+  const state = readState();
+  const now = new Date().toISOString();
+  const clearedCount = state.incidents.length;
+
+  state.incidents = [];
+  state.statuses = state.statuses.map((status) =>
+    status.helpRequested || status.helpType || status.memo
+      ? {
+          ...status,
+          helpRequested: false,
+          helpType: undefined,
+          memo: undefined,
+          updatedAt: now
+        }
+      : status
+  );
+
+  writeState(state);
+  window.dispatchEvent(new CustomEvent('smartyouth-help-reset'));
+  return { clearedCount, resetAt: now };
+}

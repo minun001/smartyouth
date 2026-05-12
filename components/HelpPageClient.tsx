@@ -11,6 +11,7 @@ import {
   getInitialStaticStatus,
   getStaticStatus,
   patchStaticIncident,
+  resetStaticHelpRequests,
   type ClientStatusResponse
 } from '@/lib/staticDemoClient';
 import type { HelpType, Incident, IncidentStatus } from '@/lib/types';
@@ -32,6 +33,8 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
   const [requestMemo, setRequestMemo] = useState('');
   const [requestSaving, setRequestSaving] = useState(false);
   const [requestSavedMessage, setRequestSavedMessage] = useState<string | null>(null);
+  const [resetSaving, setResetSaving] = useState(false);
+  const [resetSavedMessage, setResetSavedMessage] = useState<string | null>(null);
   const completeZoneRef = useRef<HTMLDivElement | null>(null);
 
   const loadStatus = useCallback(async () => {
@@ -70,6 +73,12 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
     const id = window.setTimeout(() => setRequestSavedMessage(null), 3500);
     return () => window.clearTimeout(id);
   }, [requestSavedMessage]);
+
+  useEffect(() => {
+    if (!resetSavedMessage) return undefined;
+    const id = window.setTimeout(() => setResetSavedMessage(null), 3500);
+    return () => window.clearTimeout(id);
+  }, [resetSavedMessage]);
 
   const boothNameByNo = useMemo(() => {
     return new Map(data?.booths.map((booth) => [booth.boothNo, booth.name]) ?? []);
@@ -166,6 +175,40 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
       setError('처리 실패. 다시 시도해주세요.');
     } finally {
       setSavingId(null);
+    }
+  }
+
+  async function resetAllHelp() {
+    if (!data?.access.hq || resetSaving) return;
+    const totalCount = activeIncidents.length + resolvedIncidents.length;
+    if (totalCount === 0) return;
+    if (!window.confirm(`전체 도움 요청 ${totalCount}건을 초기화할까요? 완료 기록도 함께 비워집니다.`)) return;
+
+    setResetSaving(true);
+    setResetSavedMessage(null);
+    setError(null);
+
+    try {
+      if (isStaticDemo) {
+        const result = await resetStaticHelpRequests(token);
+        setResetSavedMessage(`초기화됨 · ${result.clearedCount}건`);
+        await loadStatus();
+        return;
+      }
+
+      const suffix = token ? `?t=${encodeURIComponent(token)}` : '';
+      const response = await fetch(`${appPath('/api/incidents')}${suffix}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) throw new Error('Reset failed.');
+
+      const result = (await response.json()) as { clearedCount?: number };
+      setResetSavedMessage(`초기화됨 · ${result.clearedCount ?? 0}건`);
+      await loadStatus();
+    } catch {
+      setError('도움 요청 초기화에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setResetSaving(false);
     }
   }
 
@@ -277,6 +320,15 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
               onHelpTypeChange={setRequestType}
               onMemoChange={setRequestMemo}
               onSubmit={submitHelpRequest}
+            />
+
+            <HelpResetPanel
+              canReset={data.access.hq}
+              activeCount={activeCount}
+              resolvedCount={resolvedCount}
+              saving={resetSaving}
+              savedMessage={resetSavedMessage}
+              onReset={() => void resetAllHelp()}
             />
 
             <section className="space-y-3">
@@ -405,18 +457,34 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                 </span>
               </div>
               {resolvedIncidents.length > 0 ? (
-                <div className="space-y-2">
+                <div className="grid gap-3 lg:grid-cols-2">
                   {resolvedIncidents.slice(0, 8).map((incident) => (
-                    <div
+                    <article
                       key={incident.id}
-                      className="flex items-center justify-between gap-3 rounded-md bg-slate-50 p-3 text-sm font-bold text-slate-600"
+                      className="rounded-lg border border-emerald-100 bg-emerald-50 p-4 text-sm font-bold text-slate-700"
                     >
-                      <div className="min-w-0 truncate">
-                        <span className="font-black text-slate-950">부스 {incident.boothNo}</span> ·{' '}
-                        {helpTypeLabels[incident.type]}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-xs font-black text-emerald-700">완료된 도움 요청</div>
+                          <div className="mt-1 text-base font-black text-slate-950">
+                            부스 {incident.boothNo} · {boothNameByNo.get(incident.boothNo) ?? '부스'}
+                          </div>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-black text-emerald-700">
+                          {helpTypeLabels[incident.type]}
+                        </span>
                       </div>
-                      <span className="shrink-0 text-xs font-black text-slate-500">{formatTime(incident.updatedAt)}</span>
-                    </div>
+                      {incident.memo ? (
+                        <div className="mt-3 rounded-md bg-white p-3 leading-6 text-slate-700">{incident.memo}</div>
+                      ) : (
+                        <div className="mt-3 rounded-md bg-white p-3 text-slate-500">내용 없음</div>
+                      )}
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs font-black text-slate-500">
+                        <span>요청 {formatTime(incident.createdAt)}</span>
+                        <span>·</span>
+                        <span>완료 {formatTime(incident.updatedAt)}</span>
+                      </div>
+                    </article>
                   ))}
                 </div>
               ) : (
@@ -430,6 +498,52 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
       </main>
       <BottomNav token={token} hqMode={data?.access.hq ?? false} />
     </div>
+  );
+}
+
+function HelpResetPanel({
+  canReset,
+  activeCount,
+  resolvedCount,
+  saving,
+  savedMessage,
+  onReset
+}: {
+  canReset: boolean;
+  activeCount: number;
+  resolvedCount: number;
+  saving: boolean;
+  savedMessage: string | null;
+  onReset: () => void;
+}) {
+  const totalCount = activeCount + resolvedCount;
+
+  return (
+    <section className="rounded-lg border border-[var(--line)] bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-black text-slate-950">도움 요청 관리</h2>
+          <p className="mt-1 text-sm font-bold text-slate-600">
+            처리할 요청 {activeCount}건 · 완료 {resolvedCount}건
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 sm:min-w-[220px]">
+          {savedMessage ? (
+            <div className="rounded-md bg-emerald-50 px-3 py-2 text-center text-sm font-black text-emerald-700">
+              {savedMessage}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            disabled={!canReset || saving || totalCount === 0}
+            onClick={onReset}
+            className="min-h-12 rounded-lg bg-slate-900 px-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? '초기화 중' : '전체 도움 요청 초기화'}
+          </button>
+        </div>
+      </div>
+    </section>
   );
 }
 
