@@ -1,0 +1,234 @@
+'use client';
+
+import { booths, createInitialStatus } from './booths';
+import { getProblemReasons } from './problemBooth';
+import type {
+  BoothStatus,
+  BoothWithStatus,
+  HelpType,
+  Incident,
+  IncidentStatus,
+  RecentChange,
+  StatusPatch
+} from './types';
+
+export type ClientStatusResponse = {
+  booths: BoothWithStatus[];
+  incidents: Incident[];
+  recentChanges: RecentChange[];
+  access: {
+    hq: boolean;
+    boothNo: number | null;
+    canEditBooth: boolean;
+  };
+  mode: 'demo' | 'supabase';
+  refreshedAt: string;
+};
+
+type StaticState = {
+  statuses: BoothStatus[];
+  incidents: Incident[];
+  logs: RecentChange[];
+};
+
+const STORAGE_KEY = 'smartyouth-static-demo-state';
+const STATIC_HQ_TOKEN = 'demo-hq';
+
+function demoBoothToken(boothNo: number) {
+  return `demo-booth-${boothNo}`;
+}
+
+function id() {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function readState(): StaticState {
+  const now = new Date().toISOString();
+  const fallback: StaticState = {
+    statuses: booths.map((booth) => createInitialStatus(booth.boothNo, now)),
+    incidents: [],
+    logs: []
+  };
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Partial<StaticState>;
+    const statusMap = new Map((parsed.statuses ?? []).map((status) => [status.boothNo, status]));
+    return {
+      statuses: booths.map((booth) => statusMap.get(booth.boothNo) ?? createInitialStatus(booth.boothNo, now)),
+      incidents: parsed.incidents ?? [],
+      logs: parsed.logs ?? []
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function writeState(state: StaticState) {
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function valueToString(value: unknown) {
+  if (value === undefined || value === null || value === '') return undefined;
+  return String(value);
+}
+
+function canWrite(token?: string | null, boothNo?: number) {
+  const hq = token === STATIC_HQ_TOKEN;
+  const booth = typeof boothNo === 'number' && token === demoBoothToken(boothNo);
+  return { hq, booth, canEditBooth: hq || booth };
+}
+
+function joinState(state: StaticState): BoothWithStatus[] {
+  const statusMap = new Map(state.statuses.map((status) => [status.boothNo, status]));
+  const activeIncidentByBooth = new Map<number, Incident>();
+
+  for (const incident of state.incidents.filter((item) => item.status !== 'RESOLVED')) {
+    if (!activeIncidentByBooth.has(incident.boothNo)) {
+      activeIncidentByBooth.set(incident.boothNo, incident);
+    }
+  }
+
+  return booths.map((booth) => {
+    const status = statusMap.get(booth.boothNo) ?? createInitialStatus(booth.boothNo);
+    const problemReasons = getProblemReasons(status);
+    return {
+      ...booth,
+      status,
+      problem: problemReasons.length > 0,
+      problemReasons,
+      activeIncident: activeIncidentByBooth.get(booth.boothNo)
+    };
+  });
+}
+
+export function getStaticStatus(token?: string | null, boothNo?: number): ClientStatusResponse {
+  const state = readState();
+  const access = canWrite(token, boothNo);
+  return {
+    booths: joinState(state),
+    incidents: [...state.incidents].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    recentChanges: access.hq ? state.logs.slice(0, 16) : [],
+    access: {
+      hq: access.hq,
+      boothNo: access.booth && boothNo ? boothNo : null,
+      canEditBooth: access.canEditBooth
+    },
+    mode: 'demo',
+    refreshedAt: new Date().toISOString()
+  };
+}
+
+export async function patchStaticStatus(boothNo: number, token: string | null | undefined, patch: StatusPatch) {
+  const access = canWrite(token, boothNo);
+  if (!access.canEditBooth) throw new Error('수정 권한 없음');
+
+  const state = readState();
+  const now = new Date().toISOString();
+  const statusIndex = state.statuses.findIndex((status) => status.boothNo === boothNo);
+  const current = statusIndex >= 0 ? state.statuses[statusIndex] : createInitialStatus(boothNo, now);
+  const next: BoothStatus = {
+    ...current,
+    ...patch,
+    memo: typeof patch.memo === 'string' && patch.memo.trim() ? patch.memo.trim() : current.memo,
+    updatedAt: now
+  };
+
+  if (!next.helpRequested) {
+    next.helpType = undefined;
+  }
+
+  const logs = (Object.keys(patch) as (keyof StatusPatch)[])
+    .filter((field) => valueToString(current[field]) !== valueToString(next[field]))
+    .map((field) => ({
+      id: id(),
+      boothNo,
+      field,
+      oldValue: valueToString(current[field]),
+      newValue: valueToString(next[field]),
+      source: access.hq ? 'static-hq' : `static-booth:${boothNo}`,
+      createdAt: now
+    }));
+
+  if (statusIndex >= 0) state.statuses[statusIndex] = next;
+  else state.statuses.push(next);
+  state.logs.unshift(...logs);
+  writeState(state);
+  return { status: next, savedAt: now };
+}
+
+export async function createStaticHelp(
+  boothNo: number,
+  token: string | null | undefined,
+  type: HelpType,
+  memo?: string
+) {
+  const access = canWrite(token, boothNo);
+  if (!access.canEditBooth) throw new Error('수정 권한 없음');
+
+  const statusResult = await patchStaticStatus(boothNo, token, {
+    helpRequested: true,
+    helpType: type,
+    memo
+  });
+  const state = readState();
+  const now = statusResult.savedAt;
+  const existing = state.incidents.find(
+    (incident) => incident.boothNo === boothNo && incident.type === type && incident.status !== 'RESOLVED'
+  );
+
+  if (existing) {
+    existing.status = 'NEW';
+    existing.memo = memo?.trim() || existing.memo;
+    existing.updatedAt = now;
+    writeState(state);
+    return { incident: existing, savedAt: now };
+  }
+
+  const incident: Incident = {
+    id: id(),
+    boothNo,
+    type,
+    memo: memo?.trim() || undefined,
+    status: 'NEW',
+    createdAt: now,
+    updatedAt: now
+  };
+  state.incidents.unshift(incident);
+  writeState(state);
+  return { incident, savedAt: now };
+}
+
+export async function patchStaticIncident(token: string | null | undefined, incidentId: string, status: IncidentStatus) {
+  if (!canWrite(token).hq) throw new Error('수정 권한 없음');
+
+  const state = readState();
+  const now = new Date().toISOString();
+  const incident = state.incidents.find((item) => item.id === incidentId);
+  if (!incident) throw new Error('Incident not found.');
+
+  incident.status = status;
+  incident.updatedAt = now;
+
+  if (status === 'RESOLVED') {
+    const hasOpenIncident = state.incidents.some(
+      (item) => item.boothNo === incident.boothNo && item.status !== 'RESOLVED'
+    );
+    if (!hasOpenIncident) {
+      const index = state.statuses.findIndex((item) => item.boothNo === incident.boothNo);
+      const current = index >= 0 ? state.statuses[index] : createInitialStatus(incident.boothNo, now);
+      const next = {
+        ...current,
+        helpRequested: false,
+        helpType: undefined,
+        updatedAt: now
+      };
+      if (index >= 0) state.statuses[index] = next;
+      else state.statuses.push(next);
+    }
+  }
+
+  writeState(state);
+  return { incident, savedAt: now };
+}
