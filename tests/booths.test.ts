@@ -20,4 +20,11 @@ describe('booth seed data', () => {
     expect(byNo.get(41)?.type).toBe('hq');
     expect(byNo.get(44)?.type).toBe('waiting');
   });
+
+  it('has map coordinates for every booth', () => {
+    for (const booth of booths) {
+      expect(booth.x, `booth ${booth.boothNo} x`).toBeTypeOf('number');
+      expect(booth.y, `booth ${booth.boothNo} y`).toBeTypeOf('number');
+    }
+  });
 });

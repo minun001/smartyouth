@@ -1,6 +1,51 @@
 import type { Booth, BoothStatus } from './types';
 
-export const booths: Booth[] = [
+const boothCoordinates: Record<number, Pick<Booth, 'x' | 'y'>> = {
+  1: { x: 15.8, y: 72.8 },
+  2: { x: 18.3, y: 72.3 },
+  3: { x: 20.8, y: 71.1 },
+  4: { x: 23.3, y: 69.8 },
+  5: { x: 25.7, y: 68.6 },
+  6: { x: 28.1, y: 66.6 },
+  7: { x: 30.7, y: 66.1 },
+  8: { x: 35.4, y: 64.8 },
+  9: { x: 20.5, y: 96.6 },
+  10: { x: 22.6, y: 94.7 },
+  11: { x: 24.9, y: 94.2 },
+  12: { x: 27.1, y: 93.0 },
+  13: { x: 29.3, y: 91.8 },
+  14: { x: 31.5, y: 89.8 },
+  15: { x: 33.7, y: 88.6 },
+  16: { x: 36.0, y: 88.1 },
+  17: { x: 38.1, y: 86.2 },
+  18: { x: 40.3, y: 84.9 },
+  19: { x: 37.4, y: 48.1 },
+  20: { x: 38.8, y: 51.4 },
+  21: { x: 40.7, y: 54.2 },
+  22: { x: 42.7, y: 56.9 },
+  23: { x: 45.0, y: 59.1 },
+  24: { x: 47.5, y: 61.0 },
+  25: { x: 50.1, y: 62.0 },
+  26: { x: 52.9, y: 62.2 },
+  27: { x: 55.4, y: 61.2 },
+  28: { x: 57.8, y: 59.3 },
+  29: { x: 63.0, y: 53.7 },
+  30: { x: 62.0, y: 49.0 },
+  31: { x: 60.8, y: 44.3 },
+  32: { x: 59.9, y: 39.7 },
+  33: { x: 59.0, y: 35.2 },
+  34: { x: 58.7, y: 30.5 },
+  35: { x: 60.4, y: 27.1 },
+  36: { x: 62.8, y: 25.5 },
+  37: { x: 40.4, y: 37.0 },
+  38: { x: 42.8, y: 35.7 },
+  39: { x: 45.3, y: 34.6 },
+  40: { x: 47.6, y: 33.1 },
+  41: { x: 15.9, y: 44.7 },
+  44: { x: 86.5, y: 40.0 }
+};
+
+const boothSeed: Booth[] = [
   { boothNo: 1, name: '새싹 플레이존', type: 'experience' },
   { boothNo: 2, name: '발명 공작소, 드릴로 만드는 나만의 연필꽂이', type: 'experience' },
   { boothNo: 3, name: '지구를 위한 작은 실천, 나만의 에코 굿즈', type: 'experience' },
@@ -44,6 +89,11 @@ export const booths: Booth[] = [
   { boothNo: 41, name: '운영본부(종합안내, 접수, 미아보호소)', type: 'hq' },
   { boothNo: 44, name: '청소년재능경연대회 대기실', type: 'waiting' }
 ];
+
+export const booths: Booth[] = boothSeed.map((booth) => ({
+  ...booth,
+  ...boothCoordinates[booth.boothNo]
+}));
 
 export function createInitialStatus(boothNo: number, now = new Date().toISOString()): BoothStatus {
   return {

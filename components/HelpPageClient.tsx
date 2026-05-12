@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import AppHeader from './AppHeader';
 import BottomNav from './BottomNav';
 import { appPath, isStaticDemo } from '@/lib/clientConfig';
+import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
 import { formatTime, helpTypeLabels, incidentStatusLabels } from '@/lib/statusLabels';
 import { getStaticStatus, patchStaticIncident, type ClientStatusResponse } from '@/lib/staticDemoClient';
 import type { IncidentStatus } from '@/lib/types';
@@ -38,7 +39,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
   useEffect(() => {
     void loadStatus();
-    const id = window.setInterval(() => void loadStatus(), 5000);
+    const id = window.setInterval(() => void loadStatus(), STATUS_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(id);
   }, [loadStatus]);
 
@@ -156,7 +157,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
             })
           : null}
       </main>
-      <BottomNav token={token} />
+      <BottomNav token={token} hqMode={data?.access.hq ?? false} />
     </div>
   );
 }

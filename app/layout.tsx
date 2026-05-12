@@ -3,7 +3,10 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'smartyouth',
-  description: '2026 Asan Youth Festa booth operation tool'
+  description: '2026 Asan Youth Festa booth operation tool',
+  icons: {
+    icon: '/favicon.svg'
+  }
 };
 
 export const viewport: Viewport = {

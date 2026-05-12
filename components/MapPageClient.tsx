@@ -5,6 +5,7 @@ import AppHeader from './AppHeader';
 import BottomNav from './BottomNav';
 import MapView from './MapView';
 import { appPath, isStaticDemo } from '@/lib/clientConfig';
+import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
 import { getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
 
 export default function MapPageClient() {
@@ -29,6 +30,8 @@ export default function MapPageClient() {
 
   useEffect(() => {
     void loadStatus();
+    const id = window.setInterval(() => void loadStatus(), STATUS_REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(id);
   }, [loadStatus]);
 
   return (

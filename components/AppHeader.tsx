@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { formatTime } from '@/lib/statusLabels';
 
 type AppHeaderProps = {
@@ -10,14 +11,20 @@ type AppHeaderProps = {
 };
 
 export default function AppHeader({ title, lastRefresh, onRefresh, rightLabel }: AppHeaderProps) {
+  const [now, setNow] = useState<string | null>(null);
+  const timeText = lastRefresh ? `마지막 새로고침 ${formatTime(lastRefresh)}` : `현재 ${now ? formatTime(now) : '--:--'}`;
+
+  useEffect(() => {
+    setNow(new Date().toISOString());
+  }, []);
+
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex min-h-[64px] w-full max-w-3xl items-center justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
           <div className="text-xl font-black tracking-normal text-slate-950">smartyouth</div>
           <div className="truncate text-xs font-semibold text-slate-500">
-            {title ?? '2026 아산 청소년 페스타'}
-            {lastRefresh ? ` · 마지막 새로고침 ${formatTime(lastRefresh)}` : ` · 현재 ${formatTime()}`}
+            {title ?? '2026 아산 청소년 페스타'} · {timeText}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">

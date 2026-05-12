@@ -8,6 +8,7 @@ import BottomNav from './BottomNav';
 import FilterChips from './FilterChips';
 import SummaryCards from './SummaryCards';
 import { appPath, isStaticDemo } from '@/lib/clientConfig';
+import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
 import { formatTime } from '@/lib/statusLabels';
 import { getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
 import type { BoothStatus, BoothWithStatus, DashboardFilter } from '@/lib/types';
@@ -53,7 +54,7 @@ export default function DashboardView({ mode, token }: DashboardViewProps) {
 
   useEffect(() => {
     void loadStatus();
-    const id = window.setInterval(() => void loadStatus(), 5000);
+    const id = window.setInterval(() => void loadStatus(), STATUS_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(id);
   }, [loadStatus]);
 
@@ -105,9 +106,22 @@ export default function DashboardView({ mode, token }: DashboardViewProps) {
 
       <main className="safe-bottom mx-auto max-w-3xl space-y-4 px-4 py-4">
         {mode === 'hq' && data && !data.access.hq ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-black text-red-700">
-            HQ 수정 권한이 없는 링크입니다. HQ 토큰을 확인해주세요.
-          </div>
+          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="text-sm font-black text-red-600">수정 권한 없음</div>
+            <h1 className="mt-2 text-2xl font-black leading-tight text-slate-950">운영본부 전용 링크입니다.</h1>
+            <p className="mt-3 text-sm font-bold leading-6 text-slate-600">
+              HQ 화면은 전달받은 운영본부 링크로 접속해야 수정할 수 있습니다. 주소 끝에 HQ 토큰이 포함된
+              `/hq?t=...` 링크인지 확인해주세요.
+            </p>
+            {isStaticDemo ? (
+              <a
+                href={appPath('/hq?t=demo-hq')}
+                className="mt-4 flex min-h-12 items-center justify-center rounded-lg bg-slate-900 text-base font-black text-white"
+              >
+                데모 HQ 열기
+              </a>
+            ) : null}
+          </section>
         ) : null}
 
         {error ? <div className="rounded-lg bg-red-50 p-4 text-sm font-black text-red-700">{error}</div> : null}
@@ -116,7 +130,7 @@ export default function DashboardView({ mode, token }: DashboardViewProps) {
           <div className="rounded-lg bg-white p-6 text-center text-base font-black text-slate-500">불러오는 중</div>
         ) : null}
 
-        {data ? (
+        {data && !(mode === 'hq' && !data.access.hq) ? (
           <>
             <SummaryCards booths={data.booths} />
             <FilterChips active={filter} onChange={setFilter} />
@@ -170,7 +184,7 @@ export default function DashboardView({ mode, token }: DashboardViewProps) {
         ) : null}
       </main>
 
-      <BottomNav token={token} />
+      <BottomNav token={token} hqMode={canEdit} />
     </div>
   );
 }

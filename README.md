@@ -84,3 +84,9 @@ Use the GitHub Pages build only for preview/demo. Do not use it as the real even
 5. HQ monitors `/hq?t=HQ_TOKEN` and `/help?t=HQ_TOKEN`.
 6. Booth staff update status from their booth QR page.
 7. Public read-only status is available at `/`.
+
+## Shared Status Updates
+
+Booth staff and HQ can change operation status and congestion from large buttons on the booth control panel. Each change is saved through the server API, then public dashboards, HQ, map, help, and booth screens refresh every 2 seconds so other people can see the updated value.
+
+For this to be shared across phones, run the app on a server-capable Next.js host with Supabase env vars configured. GitHub Pages static demo mode stores changes in each browser only, so it is useful for preview but not for real shared operations.

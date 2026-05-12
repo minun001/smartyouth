@@ -6,6 +6,7 @@ import AppHeader from './AppHeader';
 import BoothControlPanel from './BoothControlPanel';
 import BottomNav from './BottomNav';
 import { appPath, isStaticDemo } from '@/lib/clientConfig';
+import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
 import { getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
 import type { BoothStatus } from '@/lib/types';
 
@@ -43,6 +44,8 @@ export default function BoothPageClient({ boothNo, token }: BoothPageClientProps
 
   useEffect(() => {
     void loadStatus();
+    const id = window.setInterval(() => void loadStatus(), STATUS_REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(id);
   }, [loadStatus]);
 
   const booth = data?.booths.find((item) => item.boothNo === boothNo);
