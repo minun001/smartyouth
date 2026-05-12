@@ -267,7 +267,19 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                         editable={canEdit}
                         defaultExpanded={statusAttentionBooths.length <= 2}
                         onEdit={(selected) => setSelectedBoothNo(selected.boothNo)}
-                      />
+                      >
+                        {selectedBoothNo === booth.boothNo && canEdit ? (
+                          <BoothControlPanel
+                            booth={booth}
+                            token={token}
+                            canEdit={canEdit}
+                            variant="inline"
+                            onClose={() => setSelectedBoothNo(null)}
+                            onUpdated={applyLocalStatus}
+                            onSaved={() => void loadStatus()}
+                          />
+                        ) : null}
+                      </BoothCard>
                     ))}
                   </div>
                 </section>
@@ -292,17 +304,6 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                 <FilterChips active={filter} onChange={setFilter} />
               </section>
 
-              {selectedBooth && canEdit ? (
-                <BoothControlPanel
-                  booth={selectedBooth}
-                  token={token}
-                  canEdit={canEdit}
-                  onClose={() => setSelectedBoothNo(null)}
-                  onUpdated={applyLocalStatus}
-                  onSaved={() => void loadStatus()}
-                />
-              ) : null}
-
               <section className="space-y-3">
                 {visibleBooths.length > 0 ? (
                   <div className="grid gap-3 lg:grid-cols-2">
@@ -312,7 +313,19 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                         booth={booth}
                         editable={canEdit}
                         onEdit={(selected) => setSelectedBoothNo(selected.boothNo)}
-                      />
+                      >
+                        {selectedBoothNo === booth.boothNo && canEdit ? (
+                          <BoothControlPanel
+                            booth={booth}
+                            token={token}
+                            canEdit={canEdit}
+                            variant="inline"
+                            onClose={() => setSelectedBoothNo(null)}
+                            onUpdated={applyLocalStatus}
+                            onSaved={() => void loadStatus()}
+                          />
+                        ) : null}
+                      </BoothCard>
                     ))}
                   </div>
                 ) : (

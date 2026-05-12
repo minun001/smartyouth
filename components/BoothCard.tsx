@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   boothTypeLabels,
   congestionStatusColor,
@@ -14,9 +15,10 @@ type BoothCardProps = {
   editable?: boolean;
   defaultExpanded?: boolean;
   onEdit?: (booth: BoothWithStatus) => void;
+  children?: ReactNode;
 };
 
-export default function BoothCard({ booth, editable, defaultExpanded = false, onEdit }: BoothCardProps) {
+export default function BoothCard({ booth, editable, defaultExpanded = false, onEdit, children }: BoothCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const status = booth.status;
   const priorityColor = booth.problem
@@ -38,7 +40,15 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
       <button
         type="button"
         aria-expanded={expanded}
-        onClick={() => setExpanded((current) => !current)}
+        onClick={() => {
+          if (editable && onEdit) {
+            setExpanded(true);
+            onEdit(booth);
+            return;
+          }
+
+          setExpanded((current) => !current);
+        }}
         className="relative flex min-h-20 w-full items-center justify-between gap-3 p-4 text-left active:bg-slate-50"
       >
         <span className="absolute bottom-0 left-0 top-0 w-1.5" style={{ backgroundColor: priorityColor }} />
@@ -70,15 +80,6 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
               <div className="text-xs font-black text-slate-500">{boothTypeLabels[booth.type]} 부스</div>
               <h2 className="mt-1 text-lg font-black leading-snug text-slate-950">{booth.name}</h2>
             </div>
-            {editable ? (
-              <button
-                type="button"
-                onClick={() => onEdit?.(booth)}
-                className="min-h-11 shrink-0 rounded-lg bg-gradient-to-r from-[var(--asan-blue)] to-[var(--asan-sky)] px-4 text-sm font-black text-white"
-              >
-                수정
-              </button>
-            ) : null}
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -89,6 +90,8 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
               color={congestionStatusColor(status.congestionLevel)}
             />
           </div>
+
+          {children ? <div className="mt-4">{children}</div> : null}
         </div>
       ) : null}
     </article>
