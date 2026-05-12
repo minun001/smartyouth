@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { appPath } from '@/lib/clientConfig';
 import { formatTime } from '@/lib/statusLabels';
 
 type AppHeaderProps = {
@@ -22,7 +23,12 @@ export default function AppHeader({ title, lastRefresh, onRefresh, rightLabel }:
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex min-h-[64px] w-full max-w-3xl items-center justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
-          <div className="text-xl font-black tracking-normal text-slate-950">smartyouth</div>
+          <img
+            src={appPath('/smartyouth-logo.png')}
+            alt="아산시청소년재단 아산시청소년교육문화센터"
+            className="h-9 w-auto max-w-[178px] object-contain object-left"
+          />
+          <span className="sr-only">smartyouth</span>
           <div className="truncate text-xs font-semibold text-slate-500">
             {title ?? '2026 아산 청소년 페스타'} · {timeText}
           </div>
