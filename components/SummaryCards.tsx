@@ -1,4 +1,5 @@
 import type { BoothWithStatus } from '@/lib/types';
+import { operationStatusLabels } from '@/lib/statusLabels';
 
 type SummaryCardsProps = {
   booths: BoothWithStatus[];
@@ -7,36 +8,36 @@ type SummaryCardsProps = {
 export default function SummaryCards({ booths }: SummaryCardsProps) {
   const summary = [
     {
-      label: '전체',
-      value: booths.length,
-      hint: '등록 부스',
+      label: operationStatusLabels.READY,
+      value: booths.filter((booth) => booth.status.operationStatus === 'READY').length,
+      hint: '운영 전',
       color: '#0060b0'
     },
     {
-      label: '운영중',
+      label: operationStatusLabels.OPEN,
       value: booths.filter((booth) => booth.status.operationStatus === 'OPEN').length,
-      hint: `${booths.length}개 중`,
+      hint: '현재 운영',
       color: '#16a34a'
     },
     {
-      label: '혼잡',
-      value: booths.filter((booth) => booth.status.congestionLevel >= 3).length,
-      hint: '혼잡 이상',
+      label: operationStatusLabels.PAUSED,
+      value: booths.filter((booth) => booth.status.operationStatus === 'PAUSED').length,
+      hint: '확인 필요',
       color: '#f97316',
       urgent: true
     },
     {
-      label: '도움요청',
-      value: booths.filter((booth) => booth.status.helpRequested).length,
-      hint: 'HQ 처리',
-      color: '#ef4444',
-      urgent: true
-    },
-    {
-      label: '마감',
+      label: operationStatusLabels.CLOSED,
       value: booths.filter((booth) => booth.status.operationStatus === 'CLOSED').length,
       hint: '종료 부스',
       color: '#64748b'
+    },
+    {
+      label: '혼잡',
+      value: booths.filter((booth) => booth.status.congestionLevel >= 3).length,
+      hint: '혼잡 상태',
+      color: '#ef4444',
+      urgent: true
     }
   ];
 

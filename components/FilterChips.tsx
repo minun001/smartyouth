@@ -1,6 +1,6 @@
 'use client';
 
-import { filterLabels, filterOrder } from '@/lib/statusLabels';
+import { filterLabels } from '@/lib/statusLabels';
 import type { DashboardFilter } from '@/lib/types';
 
 type FilterChipsProps = {
@@ -8,10 +8,12 @@ type FilterChipsProps = {
   onChange: (filter: DashboardFilter) => void;
 };
 
+const situationFilters: DashboardFilter[] = ['all', 'open', 'congested', 'closed'];
+
 export default function FilterChips({ active, onChange }: FilterChipsProps) {
   return (
     <div className="no-scrollbar flex gap-2 overflow-x-auto rounded-lg border border-[var(--line)] bg-white p-2 shadow-sm">
-      {filterOrder.map((filter) => (
+      {situationFilters.map((filter) => (
         <button
           key={filter}
           type="button"

@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { appPath, isStaticDemo } from '@/lib/clientConfig';
-import { createStaticHelp, patchStaticStatus } from '@/lib/staticDemoClient';
+import { patchStaticStatus } from '@/lib/staticDemoClient';
 import { formatTime } from '@/lib/statusLabels';
-import type { BoothStatus, BoothWithStatus, HelpType, StatusPatch } from '@/lib/types';
+import type { BoothStatus, BoothWithStatus, StatusPatch } from '@/lib/types';
 import CongestionSlider from './CongestionSlider';
-import HelpRequestButtons from './HelpRequestButtons';
 import StatusSegmentedControl from './StatusSegmentedControl';
 
 type BoothControlPanelProps = {
@@ -29,13 +28,11 @@ export default function BoothControlPanel({
   onSaved
 }: BoothControlPanelProps) {
   const [status, setStatus] = useState(booth.status);
-  const [memo, setMemo] = useState(booth.status.memo ?? '');
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [savedAt, setSavedAt] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     setStatus(booth.status);
-    setMemo(booth.status.memo ?? '');
   }, [booth.boothNo, booth.status.updatedAt]);
 
   const tokenQuery = token ? `?t=${encodeURIComponent(token)}` : '';
@@ -86,49 +83,6 @@ export default function BoothControlPanel({
     onSaved?.();
   }
 
-  async function requestHelp(type: HelpType) {
-    if (!canEdit) return;
-
-    const next = {
-      ...status,
-      helpRequested: true,
-      helpType: type,
-      memo: memo.trim() || status.memo,
-      updatedAt: new Date().toISOString()
-    };
-    setStatus(next);
-    onUpdated?.(next);
-    setSaveState('saving');
-
-    if (isStaticDemo) {
-      try {
-        await createStaticHelp(booth.boothNo, token, type, memo);
-        setSaveState('saved');
-        setSavedAt(new Date().toISOString());
-        onSaved?.();
-      } catch {
-        setSaveState('error');
-      }
-      return;
-    }
-
-    const response = await fetch(`${appPath(`/api/booths/${booth.boothNo}/help`)}${tokenQuery}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, memo })
-    });
-
-    if (!response.ok) {
-      setSaveState('error');
-      return;
-    }
-
-    setSaveState('saved');
-    setSavedAt(new Date().toISOString());
-    window.dispatchEvent(new CustomEvent('smartyouth-help-created'));
-    onSaved?.();
-  }
-
   return (
     <section className="overflow-hidden rounded-lg border border-[var(--line)] bg-white shadow-[0_18px_48px_rgba(0,96,176,0.14)]">
       <div className="bg-gradient-to-r from-[var(--asan-blue)] via-[var(--asan-sky)] to-[var(--asan-green)] p-4 text-white">
@@ -171,12 +125,6 @@ export default function BoothControlPanel({
           </div>
         ) : null}
 
-        {status.helpRequested ? (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-black text-red-700">
-            도움 요청이 접수된 상태입니다. 해결 후 HQ 도움 요청 화면에서 완료 처리해주세요.
-          </div>
-        ) : null}
-
         <div className="space-y-5">
           <ControlBlock title="운영 상태">
             <StatusSegmentedControl
@@ -192,33 +140,6 @@ export default function BoothControlPanel({
               disabled={!canEdit}
               onChange={(congestionLevel) => void patchStatus({ congestionLevel })}
             />
-          </ControlBlock>
-
-          <ControlBlock title="도움 요청">
-            <HelpRequestButtons activeType={status.helpType} disabled={!canEdit} onRequest={(type) => void requestHelp(type)} />
-          </ControlBlock>
-
-          <ControlBlock title="메모">
-            <textarea
-              value={memo}
-              disabled={!canEdit}
-              onChange={(event) => setMemo(event.target.value)}
-              onBlur={() => {
-                if (memo !== (status.memo ?? '')) void patchStatus({ memo });
-              }}
-              rows={3}
-              maxLength={300}
-              placeholder="짧게 입력"
-              className="min-h-24 w-full rounded-lg border-slate-200 text-base font-semibold text-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
-            />
-            <button
-              type="button"
-              disabled={!canEdit}
-              onClick={() => void patchStatus({ memo })}
-              className="mt-2 min-h-12 w-full rounded-lg bg-gradient-to-r from-[var(--asan-blue)] to-[var(--asan-sky)] text-base font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              메모 저장
-            </button>
           </ControlBlock>
         </div>
       </div>

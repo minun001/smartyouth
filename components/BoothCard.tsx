@@ -5,7 +5,6 @@ import {
   boothTypeLabels,
   congestionStatusColor,
   congestionStatusLabel,
-  formatRelativeUpdatedAt,
   operationStatusLabels
 } from '@/lib/statusLabels';
 import type { BoothWithStatus } from '@/lib/types';
@@ -51,26 +50,13 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
             {booth.boothNo}
           </span>
           <div className="min-w-0">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="truncate text-base font-black text-slate-950">{booth.name}</span>
-              {booth.problem ? (
-                <span className="shrink-0 rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-black text-white">
-                  문제
-                </span>
-              ) : null}
-            </div>
+            <div className="truncate text-base font-black text-slate-950">{booth.name}</div>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm font-extrabold text-slate-600">
               <span>{operationStatusLabels[status.operationStatus]}</span>
               <span>·</span>
               <span className="font-black" style={{ color: congestionStatusColor(status.congestionLevel) }}>
                 {congestionStatusLabel(status.congestionLevel)}
               </span>
-              {status.helpRequested ? (
-                <>
-                  <span>·</span>
-                  <span className="font-black text-red-600">도움요청</span>
-                </>
-              ) : null}
             </div>
           </div>
         </div>
@@ -102,24 +88,6 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
               value={congestionStatusLabel(status.congestionLevel)}
               color={congestionStatusColor(status.congestionLevel)}
             />
-          </div>
-
-          {booth.problemReasons.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {booth.problemReasons.map((reason) => (
-                <span key={reason} className="rounded-md bg-red-600 px-3 py-1 text-xs font-black text-white">
-                  {reason}
-                </span>
-              ))}
-            </div>
-          ) : null}
-
-          {status.memo ? (
-            <div className="mt-3 rounded-md bg-white p-3 text-sm font-bold leading-6 text-slate-700">{status.memo}</div>
-          ) : null}
-
-          <div className="mt-3 text-xs font-bold text-slate-500">
-            업데이트 <span suppressHydrationWarning>{formatRelativeUpdatedAt(status.updatedAt)}</span>
           </div>
         </div>
       ) : null}

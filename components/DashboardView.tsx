@@ -79,8 +79,14 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
 
   const canEdit = mode === 'hq' && Boolean(data?.access.hq);
   const selectedBooth = data?.booths.find((booth) => booth.boothNo === selectedBoothNo);
-  const problemBooths = useMemo(() => data?.booths.filter((booth) => booth.problem) ?? [], [data]);
-  const helpCount = useMemo(() => data?.booths.filter((booth) => booth.status.helpRequested).length ?? 0, [data]);
+  const statusAttentionBooths = useMemo(
+    () =>
+      data?.booths.filter(
+        (booth) => booth.status.operationStatus === 'PAUSED' || booth.status.congestionLevel >= 3
+      ) ?? [],
+    [data]
+  );
+  const openCount = useMemo(() => data?.booths.filter((booth) => booth.status.operationStatus === 'OPEN').length ?? 0, [data]);
   const congestedCount = useMemo(
     () => data?.booths.filter((booth) => booth.status.congestionLevel >= 3).length ?? 0,
     [data]
@@ -234,12 +240,10 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
               <CommandBrief
                 mode={mode}
                 canEdit={canEdit}
-                problemCount={problemBooths.length}
-                helpCount={helpCount}
+                openCount={openCount}
                 congestedCount={congestedCount}
                 totalCount={data.booths.length}
                 lastRefresh={data.refreshedAt}
-                helpHref={canEdit ? appPath(`/help${token ? `?t=${encodeURIComponent(token)}` : ''}`) : undefined}
               />
               <SummaryCards booths={data.booths} />
 
@@ -252,29 +256,20 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                 onChange={(operationStatus) => void patchAllOperationStatus(operationStatus)}
               />
 
-              {problemBooths.length > 0 ? (
+              {statusAttentionBooths.length > 0 ? (
                 <section className="rounded-lg border border-red-200 bg-red-50 p-4 shadow-sm">
-                  <SectionHeader title="즉시 확인" count={problemBooths.length} tone="danger" />
+                  <SectionHeader title="상태 확인" count={statusAttentionBooths.length} tone="danger" />
                   <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                    {problemBooths.slice(0, 4).map((booth) => (
+                    {statusAttentionBooths.slice(0, 4).map((booth) => (
                       <BoothCard
                         key={booth.boothNo}
                         booth={booth}
                         editable={canEdit}
-                        defaultExpanded={problemBooths.length <= 2}
+                        defaultExpanded={statusAttentionBooths.length <= 2}
                         onEdit={(selected) => setSelectedBoothNo(selected.boothNo)}
                       />
                     ))}
                   </div>
-                  {problemBooths.length > 4 ? (
-                    <button
-                      type="button"
-                      onClick={() => setFilter('problem')}
-                      className="mt-3 min-h-12 w-full rounded-lg bg-red-600 text-base font-black text-white"
-                    >
-                      문제 부스 {problemBooths.length}개 전체 보기
-                    </button>
-                  ) : null}
                 </section>
               ) : (
                 <section className="rounded-lg border border-sky-200 bg-sky-50 p-4 shadow-sm">
@@ -282,7 +277,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                     <div>
                       <h2 className="text-lg font-black text-[var(--brand-strong)]">현재 즉시 대응 부스 없음</h2>
                       <p className="mt-1 text-sm font-bold text-sky-800">
-                        혼잡, 도움 요청, 일시중단 상태를 계속 감시 중입니다.
+                        운영상태와 혼잡도를 계속 감시 중입니다.
                       </p>
                     </div>
                     <span className="rounded-md bg-[var(--asan-green)] px-3 py-2 text-sm font-black text-white">
@@ -435,28 +430,20 @@ function BulkOperationControls({
 function CommandBrief({
   mode,
   canEdit,
-  problemCount,
-  helpCount,
+  openCount,
   congestedCount,
   totalCount,
-  lastRefresh,
-  helpHref
+  lastRefresh
 }: {
   mode: 'public' | 'hq';
   canEdit: boolean;
-  problemCount: number;
-  helpCount: number;
+  openCount: number;
   congestedCount: number;
   totalCount: number;
   lastRefresh?: string;
-  helpHref?: string;
 }) {
   const attentionText =
-    problemCount > 0
-      ? `문제 ${problemCount}개 · 도움 ${helpCount}건`
-      : mode === 'hq'
-        ? '현장 이상 신호 없음'
-        : '운영 상태 공개 확인';
+    congestedCount > 0 ? `혼잡 ${congestedCount}개 확인` : openCount > 0 ? `운영중 ${openCount}개` : '운영 상태 확인';
 
   return (
     <section className="overflow-hidden rounded-lg bg-gradient-to-br from-[var(--asan-blue)] via-[var(--asan-sky)] to-[var(--asan-green)] text-white shadow-[0_24px_60px_rgba(0,96,176,0.22)]">
@@ -471,26 +458,18 @@ function CommandBrief({
             </h1>
             <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-white">
               {mode === 'hq'
-                ? '문제 부스, 도움 요청, 혼잡 여부를 한 화면에서 확인하고 즉시 조치합니다.'
+                ? '부스별 운영상태와 혼잡도를 한 화면에서 확인하고 즉시 조정합니다.'
                 : '행사 부스의 운영 상태와 혼잡도를 실시간으로 확인할 수 있습니다.'}
             </p>
-            {helpHref ? (
-              <a
-                href={helpHref}
-                className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-white px-4 text-sm font-black text-[var(--brand)]"
-              >
-                도움 요청 열기
-              </a>
-            ) : null}
           </div>
           <div className="grid grid-cols-3 gap-2 sm:min-w-[420px]">
-            <BriefMetric label="주의" value={problemCount} danger={problemCount > 0} />
+            <BriefMetric label="운영중" value={openCount} />
             <BriefMetric label="혼잡" value={congestedCount} danger={congestedCount > 0} />
             <BriefMetric label="전체" value={totalCount} />
           </div>
         </div>
         <div className="relative mt-5 grid gap-2 sm:grid-cols-3">
-          <StatusStrip label="현재 판단" value={attentionText} danger={problemCount > 0} />
+          <StatusStrip label="현재 판단" value={attentionText} danger={congestedCount > 0} />
           <StatusStrip label="권한" value={canEdit ? 'HQ 수정 가능' : mode === 'hq' ? '토큰 확인 필요' : '읽기 전용'} />
           <StatusStrip label="갱신" value={`${formatTime(lastRefresh)} · 5초 주기`} />
         </div>

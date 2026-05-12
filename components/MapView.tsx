@@ -7,7 +7,6 @@ import {
   boothTypeLabels,
   congestionStatusColor,
   congestionStatusLabel,
-  formatRelativeUpdatedAt,
   isCongestedLevel,
   operationStatusLabels
 } from '@/lib/statusLabels';
@@ -583,24 +582,8 @@ function SelectedBoothFloat({
           <MiniStatus label="혼잡" value={congestionStatusLabel(status.congestionLevel)} color={congestionColor} />
         </div>
 
-        {booth.problemReasons.length > 0 || status.helpRequested ? (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {status.helpRequested ? (
-              <span className="rounded-md bg-red-600 px-2 py-1 text-xs font-black text-white">도움요청</span>
-            ) : null}
-            {booth.problemReasons.slice(0, 3).map((reason) => (
-              <span key={reason} className="rounded-md bg-red-50 px-2 py-1 text-xs font-black text-red-700">
-                {reason}
-              </span>
-            ))}
-          </div>
-        ) : null}
-
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <div className="truncate text-xs font-bold text-slate-500">
-            업데이트 {formatRelativeUpdatedAt(status.updatedAt)}
-          </div>
-          {editable ? (
+        {editable ? (
+          <div className="mt-3 flex justify-end">
             <button
               type="button"
               onClick={() => onEdit?.(booth)}
@@ -608,8 +591,8 @@ function SelectedBoothFloat({
             >
               수정
             </button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </article>
     </div>
   );
