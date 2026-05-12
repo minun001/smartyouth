@@ -41,7 +41,7 @@ export default function MapPageClient() {
   return (
     <div className="min-h-screen text-slate-950">
       <AppHeader title="운영 상황" lastRefresh={data?.refreshedAt} onRefresh={() => void loadStatus()} />
-      <main className="h-[calc(100dvh-76px)] overflow-hidden bg-slate-100">
+      <main className="h-[calc(100dvh-var(--app-header-height))] overflow-hidden bg-slate-100 pb-[calc(env(safe-area-inset-bottom)+var(--bottom-nav-height))]">
         {error ? <div className="m-4 rounded-lg bg-red-50 p-4 text-sm font-black text-red-700">{error}</div> : null}
         {data ? (
           <MapView booths={data.booths} fullScreen showProblemList={false} />

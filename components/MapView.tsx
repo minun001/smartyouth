@@ -41,6 +41,7 @@ const MAP_IMAGE_WIDTH = 1135;
 const MAP_IMAGE_HEIGHT = 710;
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 3.2;
+const DESKTOP_DEFAULT_MAX_ZOOM = 1.35;
 const MARKER_SIZE = 44;
 const BOOTH_POSITION_OVERRIDES: Record<number, Point> = {
   8: { x: 33.0, y: 64.8 }
@@ -56,6 +57,37 @@ function getFitScale(size: ViewportSize) {
   }
 
   return clamp(Math.min(size.width / MAP_IMAGE_WIDTH, size.height / MAP_IMAGE_HEIGHT), MIN_ZOOM, 1);
+}
+
+function getDefaultScale(size: ViewportSize) {
+  if (!size.width || !size.height) {
+    return 1;
+  }
+
+  const fitScale = getFitScale(size);
+  const widthScale = size.width / MAP_IMAGE_WIDTH;
+  const comfortFloor = size.width >= 1280 ? 1.08 : size.width >= 1024 ? 1 : size.width >= 768 ? 0.86 : 0.72;
+  const widthTarget = widthScale * (size.width >= 1024 ? 0.96 : 1.35);
+  const defaultMax =
+    size.width >= 1440 ? DESKTOP_DEFAULT_MAX_ZOOM : size.width >= 1024 ? 1.18 : size.width >= 768 ? 1 : 0.82;
+
+  return clamp(Math.max(widthTarget, comfortFloor), fitScale, defaultMax);
+}
+
+function getCenteredTransform(size: ViewportSize, scale: number): MapTransform {
+  return {
+    scale,
+    x: (size.width - MAP_IMAGE_WIDTH * scale) / 2,
+    y: (size.height - MAP_IMAGE_HEIGHT * scale) / 2
+  };
+}
+
+function getDefaultTransform(size: ViewportSize) {
+  if (!size.width || !size.height) {
+    return { scale: 1, x: 0, y: 0 };
+  }
+
+  return constrainTransform(getCenteredTransform(size, getDefaultScale(size)), size);
 }
 
 function constrainTransform(transform: MapTransform, size: ViewportSize): MapTransform {
@@ -91,6 +123,18 @@ function getMidpoint(a: Point, b: Point): Point {
   };
 }
 
+function getViewportPoint(point: Point, viewport: HTMLDivElement | null): Point {
+  if (!viewport) {
+    return point;
+  }
+
+  const rect = viewport.getBoundingClientRect();
+  return {
+    x: point.x - rect.left,
+    y: point.y - rect.top
+  };
+}
+
 export default function MapView({
   booths,
   editable = false,
@@ -105,6 +149,8 @@ export default function MapView({
   const lastPanPointRef = useRef<Point | null>(null);
   const lastPinchRef = useRef<{ distance: number; midpoint: Point } | null>(null);
   const didDragRef = useRef(false);
+  const hasMeasuredViewportRef = useRef(false);
+  const hasUserAdjustedMapRef = useRef(false);
   const transformRef = useRef<MapTransform>({ scale: 1, x: 0, y: 0 });
   const [viewportSize, setViewportSize] = useState<ViewportSize>({ width: 0, height: 0 });
   const [transform, setTransformState] = useState<MapTransform>({ scale: 1, x: 0, y: 0 });
@@ -112,8 +158,12 @@ export default function MapView({
   const problemBooths = booths.filter((booth) => booth.problem);
   const selectedBooth = booths.find((booth) => booth.boothNo === selectedBoothNo);
   const minScale = useMemo(() => getFitScale(viewportSize), [viewportSize]);
+  const defaultTransform = useMemo(() => getDefaultTransform(viewportSize), [viewportSize]);
   const canZoomOut = transform.scale > minScale + 0.01;
-  const canReset = Math.abs(transform.scale - minScale) > 0.01 || Math.abs(transform.x) > 1 || Math.abs(transform.y) > 1;
+  const canReset =
+    Math.abs(transform.scale - defaultTransform.scale) > 0.01 ||
+    Math.abs(transform.x - defaultTransform.x) > 1 ||
+    Math.abs(transform.y - defaultTransform.y) > 1;
 
   const setTransform = useCallback(
     (nextTransform: MapTransform) => {
@@ -126,6 +176,7 @@ export default function MapView({
 
   const zoomAround = useCallback(
     (nextScale: number, point: Point) => {
+      hasUserAdjustedMapRef.current = true;
       const current = transformRef.current;
       const scale = clamp(nextScale, minScale, MAX_ZOOM);
       const mapX = (point.x - current.x) / current.scale;
@@ -140,8 +191,9 @@ export default function MapView({
   );
 
   const resetTransform = useCallback(() => {
-    setTransform({ scale: minScale, x: 0, y: 0 });
-  }, [minScale, setTransform]);
+    hasUserAdjustedMapRef.current = false;
+    setTransform(defaultTransform);
+  }, [defaultTransform, setTransform]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -155,13 +207,17 @@ export default function MapView({
         height: entry.contentRect.height
       };
       setViewportSize(nextSize);
+      const shouldUseDefault = !hasMeasuredViewportRef.current || !hasUserAdjustedMapRef.current;
       const nextTransform = constrainTransform(
-        {
-          ...transformRef.current,
-          scale: Math.max(transformRef.current.scale, getFitScale(nextSize))
-        },
+        shouldUseDefault
+          ? getDefaultTransform(nextSize)
+          : {
+              ...transformRef.current,
+              scale: Math.max(transformRef.current.scale, getFitScale(nextSize))
+            },
         nextSize
       );
+      hasMeasuredViewportRef.current = true;
       transformRef.current = nextTransform;
       setTransformState(nextTransform);
     });
@@ -169,14 +225,6 @@ export default function MapView({
 
     return () => observer.disconnect();
   }, []);
-
-  useEffect(() => {
-    if (!viewportSize.width || !viewportSize.height) {
-      return;
-    }
-
-    resetTransform();
-  }, [resetTransform, viewportSize.width, viewportSize.height]);
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest('[data-booth-marker], [data-map-control], [data-map-panel]')) {
@@ -215,6 +263,7 @@ export default function MapView({
         const dy = nextPoint.y - lastPanPointRef.current.y;
         if (Math.abs(dx) + Math.abs(dy) > 6) {
           didDragRef.current = true;
+          hasUserAdjustedMapRef.current = true;
         }
         lastPanPointRef.current = nextPoint;
         setTransform({
@@ -229,7 +278,7 @@ export default function MapView({
         if (lastPinch && lastPinch.distance > 0) {
           const nextScale = transformRef.current.scale * (distance / lastPinch.distance);
           didDragRef.current = true;
-          zoomAround(nextScale, midpoint);
+          zoomAround(nextScale, getViewportPoint(midpoint, viewportRef.current));
         }
         lastPinchRef.current = { distance, midpoint };
       }
@@ -414,9 +463,9 @@ export default function MapView({
                 onClick={resetTransform}
                 disabled={!canReset}
                 className="min-h-11 px-3 text-xs font-black text-slate-700 disabled:text-slate-300"
-                aria-label="지도 전체 보기"
+                aria-label="지도 보기 맞춤"
               >
-                전체
+                맞춤
               </button>
             </div>
           </div>
