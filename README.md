@@ -19,6 +19,8 @@ Copy `.env.example` to `.env.local` and set:
 
 ```bash
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_API_BASE_URL=
+NEXT_PUBLIC_REALTIME_URL=
 SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...
 HQ_TOKEN=...
@@ -56,11 +58,64 @@ public/booth-map.png
 
 If the file is missing, `/map` shows a clear placeholder. If booth `x` and `y` values are added later, pins will render on top of the image.
 
+## Cloudflare Realtime Backend
+
+For the GitHub Pages production version, use Cloudflare Workers + D1 + WebSocket. GitHub Pages serves the screen, while Cloudflare stores booth status and broadcasts change signals only when data changes.
+
+1. Log in to Cloudflare:
+
+```bash
+npx wrangler login
+```
+
+2. Create the D1 database:
+
+```bash
+npm run worker:d1:create
+```
+
+3. Copy the printed database id into `wrangler.toml`:
+
+```toml
+database_id = "..."
+```
+
+4. Add Worker secrets:
+
+```bash
+npx wrangler secret put HQ_TOKEN
+npx wrangler secret put BOOTH_TOKEN_SECRET
+```
+
+5. Apply the schema and seed booths:
+
+```bash
+npm run worker:d1:apply
+```
+
+6. Deploy the Worker:
+
+```bash
+npm run worker:deploy
+```
+
+7. Set GitHub repository secrets:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=https://smartyouth-api.<your-subdomain>.workers.dev
+NEXT_PUBLIC_REALTIME_URL=wss://smartyouth-api.<your-subdomain>.workers.dev/ws
+```
+
+After these secrets are set, the GitHub Pages workflow builds the real shared-data version instead of local demo mode.
+
+For 40-100 event-day users, the app opens one WebSocket per active browser. A status change writes to D1 once and broadcasts a small signal, then connected screens refresh. If WebSocket is unavailable, screens fall back to a 30-second refresh.
+
 ## Deploy
 
-For real event operations, deploy as a standard Next.js App Router project on a host that supports server route handlers, such as Vercel or Netlify Functions. Set the same environment variables in the hosting platform. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only.
+For real event operations on GitHub Pages, deploy the Cloudflare backend first. GitHub Pages is static hosting, so it cannot run Next.js route handlers by itself. This repo includes a GitHub Pages workflow that can either:
 
-GitHub Pages is static hosting, so it cannot run the secure server token verification or Supabase service-role route handlers. This repo includes a GitHub Pages workflow that deploys a static demo to:
+- build demo mode when `NEXT_PUBLIC_API_BASE_URL` is missing
+- build the real Cloudflare-backed version when `NEXT_PUBLIC_API_BASE_URL` and `NEXT_PUBLIC_REALTIME_URL` are set
 
 ```text
 https://minun001.github.io/smartyouth
@@ -73,7 +128,7 @@ HQ demo: /hq?t=demo-hq
 Booth 1 demo: /booth/1?t=demo-booth-1
 ```
 
-Use the GitHub Pages build only for preview/demo. Do not use it as the real event-day operations backend.
+Use demo mode only for preview. Use the Cloudflare backend above for real event-day shared status.
 
 To reproduce the GitHub Pages build locally:
 
@@ -99,4 +154,4 @@ npm run build:pages
 
 Booth staff and HQ can change operation status and congestion from large buttons on the booth control panel. Each change is saved through the server API, then public dashboards, HQ, map, help, and booth screens refresh every 5 seconds so other people can see the updated value.
 
-For this to be shared across phones, run the app on a server-capable Next.js host with Supabase env vars configured. GitHub Pages static demo mode stores changes in each browser only, so it is useful for preview but not for real shared operations.
+For this to be shared across phones on GitHub Pages, configure the Cloudflare backend. GitHub Pages static demo mode stores changes in each browser only, so it is useful for preview but not for real shared operations.
