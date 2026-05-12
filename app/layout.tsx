@@ -1,11 +1,17 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
+const iconBasePath = process.env.GITHUB_PAGES === 'true' ? '/smartyouth' : '';
+
 export const metadata: Metadata = {
-  title: 'smartyouth',
-  description: '2026 Asan Youth Festa booth operation tool',
+  title: 'SmartYouth 운영상황판',
+  description: '2026 아산 청소년 페스타 부스 실시간 운영 도구',
   icons: {
-    icon: '/favicon.svg'
+    icon: [
+      { url: `${iconBasePath}/favicon.png`, sizes: '512x512', type: 'image/png' },
+      { url: `${iconBasePath}/favicon.svg`, type: 'image/svg+xml' }
+    ],
+    apple: [{ url: `${iconBasePath}/apple-touch-icon.png`, sizes: '512x512', type: 'image/png' }]
   }
 };
 
@@ -13,7 +19,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#f8fafc'
+  themeColor: '#12352f'
 };
 
 export default function RootLayout({
