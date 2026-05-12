@@ -6,10 +6,10 @@ import BottomNav from './BottomNav';
 import MapView from './MapView';
 import { appPath, isStaticDemo } from '@/lib/clientConfig';
 import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
-import { getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
+import { getInitialStaticStatus, getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
 
 export default function MapPageClient() {
-  const [data, setData] = useState<ClientStatusResponse | null>(() => (isStaticDemo ? getStaticStatus() : null));
+  const [data, setData] = useState<ClientStatusResponse | null>(() => (isStaticDemo ? getInitialStaticStatus() : null));
   const [error, setError] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {

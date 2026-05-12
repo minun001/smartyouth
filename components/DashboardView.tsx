@@ -11,7 +11,7 @@ import SummaryCards from './SummaryCards';
 import { appPath, isStaticDemo } from '@/lib/clientConfig';
 import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
 import { formatTime } from '@/lib/statusLabels';
-import { getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
+import { getInitialStaticStatus, getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
 import type { BoothStatus, DashboardFilter } from '@/lib/types';
 
 type DashboardViewProps = {
@@ -21,7 +21,9 @@ type DashboardViewProps = {
 };
 
 export default function DashboardView({ mode, token, view = 'map' }: DashboardViewProps) {
-  const [data, setData] = useState<ClientStatusResponse | null>(() => (isStaticDemo ? getStaticStatus(token) : null));
+  const [data, setData] = useState<ClientStatusResponse | null>(() =>
+    isStaticDemo ? getInitialStaticStatus(token) : null
+  );
   const [filter, setFilter] = useState<DashboardFilter>('all');
   const [selectedBoothNo, setSelectedBoothNo] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);

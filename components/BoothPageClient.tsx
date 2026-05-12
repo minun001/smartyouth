@@ -7,7 +7,7 @@ import BoothControlPanel from './BoothControlPanel';
 import BottomNav from './BottomNav';
 import { appPath, isStaticDemo } from '@/lib/clientConfig';
 import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
-import { getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
+import { getInitialStaticStatus, getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
 import type { BoothStatus } from '@/lib/types';
 
 type BoothPageClientProps = {
@@ -19,7 +19,7 @@ export default function BoothPageClient({ boothNo, token }: BoothPageClientProps
   const searchParams = useSearchParams();
   const activeToken = token ?? searchParams.get('t') ?? undefined;
   const [data, setData] = useState<ClientStatusResponse | null>(() =>
-    isStaticDemo ? getStaticStatus(activeToken, boothNo) : null
+    isStaticDemo ? getInitialStaticStatus(activeToken, boothNo) : null
   );
   const [error, setError] = useState<string | null>(null);
 

@@ -33,6 +33,7 @@ type StaticState = {
 
 const STORAGE_KEY = 'smartyouth-static-demo-state';
 const STATIC_HQ_TOKEN = 'demo-hq';
+const STATIC_PRERENDERED_AT = '2026-05-12T09:00:00.000Z';
 
 function demoBoothToken(boothNo: number) {
   return `demo-booth-${boothNo}`;
@@ -42,13 +43,16 @@ function id() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function readState(): StaticState {
-  const now = new Date().toISOString();
-  const fallback: StaticState = {
+function createFallbackState(now: string): StaticState {
+  return {
     statuses: booths.map((booth) => createInitialStatus(booth.boothNo, now)),
     incidents: [],
     logs: []
   };
+}
+
+function readState(now = new Date().toISOString()): StaticState {
+  const fallback = createFallbackState(now);
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -104,7 +108,8 @@ function joinState(state: StaticState): BoothWithStatus[] {
 }
 
 export function getStaticStatus(token?: string | null, boothNo?: number): ClientStatusResponse {
-  const state = readState();
+  const refreshedAt = new Date().toISOString();
+  const state = readState(refreshedAt);
   const access = canWrite(token, boothNo);
   return {
     booths: joinState(state),
@@ -116,7 +121,23 @@ export function getStaticStatus(token?: string | null, boothNo?: number): Client
       canEditBooth: access.canEditBooth
     },
     mode: 'demo',
-    refreshedAt: new Date().toISOString()
+    refreshedAt
+  };
+}
+
+export function getInitialStaticStatus(token?: string | null, boothNo?: number): ClientStatusResponse {
+  const access = canWrite(token, boothNo);
+  return {
+    booths: joinState(createFallbackState(STATIC_PRERENDERED_AT)),
+    incidents: [],
+    recentChanges: [],
+    access: {
+      hq: access.hq,
+      boothNo: access.booth && boothNo ? boothNo : null,
+      canEditBooth: access.canEditBooth
+    },
+    mode: 'demo',
+    refreshedAt: STATIC_PRERENDERED_AT
   };
 }
 
