@@ -6,12 +6,13 @@ import BoothCard from './BoothCard';
 import BoothControlPanel from './BoothControlPanel';
 import BottomNav from './BottomNav';
 import FilterChips from './FilterChips';
+import MapView from './MapView';
 import SummaryCards from './SummaryCards';
 import { appPath, isStaticDemo } from '@/lib/clientConfig';
 import { STATUS_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
 import { formatTime } from '@/lib/statusLabels';
 import { getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
-import type { BoothStatus, BoothWithStatus, DashboardFilter } from '@/lib/types';
+import type { BoothStatus, DashboardFilter } from '@/lib/types';
 
 type DashboardViewProps = {
   mode: 'public' | 'hq';
@@ -133,6 +134,17 @@ export default function DashboardView({ mode, token }: DashboardViewProps) {
         {data && !(mode === 'hq' && !data.access.hq) ? (
           <>
             <SummaryCards booths={data.booths} />
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-black text-slate-950">부스 지도</h2>
+              <MapView
+                booths={data.booths}
+                editable={canEdit}
+                showProblemList={false}
+                onEdit={(selected) => setSelectedBoothNo(selected.boothNo)}
+              />
+            </section>
+
             <FilterChips active={filter} onChange={setFilter} />
 
             {selectedBooth && canEdit ? (

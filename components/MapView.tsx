@@ -7,9 +7,12 @@ import BoothCard from './BoothCard';
 
 type MapViewProps = {
   booths: BoothWithStatus[];
+  editable?: boolean;
+  showProblemList?: boolean;
+  onEdit?: (booth: BoothWithStatus) => void;
 };
 
-export default function MapView({ booths }: MapViewProps) {
+export default function MapView({ booths, editable = false, showProblemList = true, onEdit }: MapViewProps) {
   const [imageMissing, setImageMissing] = useState(false);
   const [selectedBoothNo, setSelectedBoothNo] = useState<number | null>(null);
   const hasPins = booths.some((booth) => typeof booth.x === 'number' && typeof booth.y === 'number');
@@ -39,12 +42,18 @@ export default function MapView({ booths }: MapViewProps) {
                         type="button"
                         aria-label={`부스 ${booth.boothNo} ${booth.name} 보기`}
                         onClick={() => setSelectedBoothNo(booth.boothNo)}
-                        className={`absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-[11px] font-black text-white shadow-md ${
-                          booth.problem ? 'bg-red-500' : selected ? 'bg-green-600' : 'bg-slate-900'
-                        } ${selected ? 'ring-4 ring-green-300' : ''}`}
+                        className={`absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full ${
+                          selected ? 'z-10' : ''
+                        }`}
                         style={{ left: `${booth.x}%`, top: `${booth.y}%` }}
                       >
-                        {booth.boothNo}
+                        <span
+                          className={`flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-[11px] font-black text-white shadow-md ${
+                            booth.problem ? 'bg-red-500' : selected ? 'bg-green-600' : 'bg-slate-900'
+                          } ${selected ? 'ring-4 ring-green-300' : ''}`}
+                        >
+                          {booth.boothNo}
+                        </span>
                       </button>
                     );
                   })
@@ -63,27 +72,29 @@ export default function MapView({ booths }: MapViewProps) {
         </div>
       ) : null}
 
-      {hasPins ? (
-        <div className="rounded-lg bg-white p-3 text-sm font-bold text-slate-600">
-          지도 번호를 누르면 해당 부스 정보를 볼 수 있습니다. 좁은 화면에서는 지도를 좌우로 움직여 주세요.
-        </div>
-      ) : null}
-
       {selectedBooth ? (
         <div className="space-y-3">
           <h2 className="text-lg font-black text-slate-950">선택 부스</h2>
-          <BoothCard key={selectedBooth.boothNo} booth={selectedBooth} defaultExpanded />
+          <BoothCard
+            key={selectedBooth.boothNo}
+            booth={selectedBooth}
+            defaultExpanded
+            editable={editable}
+            onEdit={onEdit}
+          />
         </div>
       ) : null}
 
-      <div className="space-y-3">
-        <h2 className="text-lg font-black text-slate-950">문제 부스</h2>
-        {problemBooths.length > 0 ? (
-          problemBooths.map((booth) => <BoothCard key={booth.boothNo} booth={booth} />)
-        ) : (
-          <div className="rounded-lg bg-white p-4 text-sm font-bold text-slate-500">현재 문제 부스가 없습니다.</div>
-        )}
-      </div>
+      {showProblemList ? (
+        <div className="space-y-3">
+          <h2 className="text-lg font-black text-slate-950">문제 부스</h2>
+          {problemBooths.length > 0 ? (
+            problemBooths.map((booth) => <BoothCard key={booth.boothNo} booth={booth} />)
+          ) : (
+            <div className="rounded-lg bg-white p-4 text-sm font-bold text-slate-500">현재 문제 부스가 없습니다.</div>
+          )}
+        </div>
+      ) : null}
     </section>
   );
 }
