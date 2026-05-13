@@ -15,13 +15,14 @@ describe('token helpers', () => {
     expect(verifyBoothToken(9, token, secret)).toBe(false);
   });
 
-  it('verifies HQ token with constant-time comparison', () => {
+  it('keeps HQ operations open without requiring token links', () => {
     expect(verifyHqToken('hq-token', 'hq-token')).toBe(true);
-    expect(verifyHqToken('other', 'hq-token')).toBe(false);
+    expect(verifyHqToken('other', 'hq-token')).toBe(true);
+    expect(verifyHqToken(undefined, 'hq-token')).toBe(true);
   });
 
   it('accepts demo tokens when secrets are missing', () => {
-    expect(verifyHqToken('demo-hq', '')).toBe(true);
+    expect(verifyHqToken(undefined, '')).toBe(true);
     expect(verifyBoothToken(5, 'demo-booth-5', '')).toBe(true);
     expect(verifyBoothToken(6, 'demo-booth-5', '')).toBe(false);
   });

@@ -370,7 +370,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
         <section className="rounded-lg bg-gradient-to-br from-[var(--asan-blue)] via-[var(--asan-sky)] to-[var(--asan-green)] p-5 text-white shadow-[0_24px_60px_rgba(0,96,176,0.22)]">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="text-xs font-black uppercase tracking-[0.16em] text-[var(--asan-yellow)]">HQ Help Queue</div>
+              <div className="text-xs font-black uppercase tracking-[0.16em] text-[var(--asan-yellow)]">Help Queue</div>
               <h1 className="mt-2 text-3xl font-black leading-tight">현장 도움 요청</h1>
               <p className="mt-2 text-sm font-bold text-white">
                 부스 번호와 내용을 등록하고, 해결된 요청은 완료 영역으로 끌어 옮깁니다.

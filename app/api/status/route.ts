@@ -52,7 +52,7 @@ export async function PATCH(request: Request) {
   try {
     const token = getRequestToken(request);
     if (!verifyHqToken(token)) {
-      return NextResponse.json({ error: 'HQ token is required.' }, { status: 403 });
+      return NextResponse.json({ error: '요청을 처리할 수 없습니다.' }, { status: 403 });
     }
 
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -75,7 +75,7 @@ export async function DELETE(request: Request) {
   try {
     const token = getRequestToken(request);
     if (!verifyHqToken(token)) {
-      return NextResponse.json({ error: 'HQ token is required.' }, { status: 403 });
+      return NextResponse.json({ error: '요청을 처리할 수 없습니다.' }, { status: 403 });
     }
 
     const result = await resetAllOperations();

@@ -48,15 +48,15 @@ describe('static demo operation reset', () => {
     Reflect.deleteProperty(globalThis, 'CustomEvent');
   });
 
-  it('resets every HQ-managed demo value to the initial operation state', async () => {
-    await patchStaticAllOperationStatuses('demo-hq', 'OPEN');
-    await createStaticHelp(1, 'demo-hq', 'ETC', 'reset check');
+  it('resets every demo value to the initial operation state without a token', async () => {
+    await patchStaticAllOperationStatuses(undefined, 'OPEN');
+    await createStaticHelp(1, undefined, 'ETC', 'reset check');
 
-    expect(getStaticStatus('demo-hq').booths.every((booth) => booth.status.operationStatus === 'OPEN')).toBe(true);
-    expect(getStaticStatus('demo-hq').incidents).toHaveLength(1);
+    expect(getStaticStatus().booths.every((booth) => booth.status.operationStatus === 'OPEN')).toBe(true);
+    expect(getStaticStatus().incidents).toHaveLength(1);
 
-    const result = await resetStaticOperations('demo-hq');
-    const reset = getStaticStatus('demo-hq');
+    const result = await resetStaticOperations(undefined);
+    const reset = getStaticStatus();
 
     expect(result.boothCount).toBe(reset.booths.length);
     expect(reset.booths.every((booth) => booth.status.operationStatus === 'READY')).toBe(true);

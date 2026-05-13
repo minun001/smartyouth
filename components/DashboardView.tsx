@@ -8,7 +8,7 @@ import BottomNav from './BottomNav';
 import FilterChips from './FilterChips';
 import MapView from './MapView';
 import SummaryCards from './SummaryCards';
-import { apiPath, appPath, isStaticDemo } from '@/lib/clientConfig';
+import { apiPath, isStaticDemo } from '@/lib/clientConfig';
 import { formatTime } from '@/lib/statusLabels';
 import {
   getInitialStaticStatus,
@@ -240,14 +240,6 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
             <p className="mt-3 text-sm font-bold leading-6 text-slate-600">
               운영 데이터를 불러오지 못했습니다. 새로고침 후 다시 확인해주세요.
             </p>
-            {isStaticDemo ? (
-              <a
-                href={appPath('/hq?t=demo-hq')}
-                className="mt-4 flex min-h-12 items-center justify-center rounded-lg bg-slate-900 text-base font-black text-white"
-              >
-                데모 HQ로 열기
-              </a>
-            ) : null}
           </section>
         ) : null}
 
@@ -313,7 +305,6 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
               <BulkOperationControls
                 totalCount={data.booths.length}
                 canEdit={canEdit}
-                demoHqHref={!canEdit && data.mode === 'demo' ? appPath('/overview?t=demo-hq') : undefined}
                 saving={bulkSaving}
                 resetSaving={resetSaving}
                 savedMessage={bulkSavedMessage}
@@ -507,7 +498,6 @@ function MapBulkOperationControls({
 function BulkOperationControls({
   totalCount,
   canEdit,
-  demoHqHref,
   saving,
   resetSaving,
   savedMessage,
@@ -516,7 +506,6 @@ function BulkOperationControls({
 }: {
   totalCount: number;
   canEdit: boolean;
-  demoHqHref?: string;
   saving: OperationStatus | null;
   resetSaving: boolean;
   savedMessage: string | null;
@@ -546,13 +535,6 @@ function BulkOperationControls({
           <div className="rounded-md bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-700">
             {savedMessage}
           </div>
-        ) : demoHqHref ? (
-          <a
-            href={demoHqHref}
-            className="flex min-h-11 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-black text-white"
-          >
-            데모 HQ로 열기
-          </a>
         ) : null}
       </div>
 

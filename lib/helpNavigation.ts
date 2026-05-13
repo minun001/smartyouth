@@ -1,5 +1,3 @@
-const HQ_QUEUE_ROUTES = /\/(?:hq|overview|help)\/?$/;
-
 type HelpQueueHrefInput = {
   pathname: string;
   staticDemo: boolean;
@@ -7,10 +5,11 @@ type HelpQueueHrefInput = {
 };
 
 export function canCarryHqTokenToHelp(pathname: string) {
-  return HQ_QUEUE_ROUTES.test(pathname);
+  void pathname;
+  return false;
 }
 
-export function getHelpQueueHref({ pathname, staticDemo, token }: HelpQueueHrefInput) {
-  const queueToken = staticDemo ? 'demo-hq' : canCarryHqTokenToHelp(pathname) ? token : null;
-  return `/help${queueToken ? `?t=${encodeURIComponent(queueToken)}` : ''}`;
+export function getHelpQueueHref(input: HelpQueueHrefInput) {
+  void input;
+  return '/help';
 }

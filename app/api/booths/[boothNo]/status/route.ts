@@ -46,7 +46,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ booth
 
     const access = getWriteAccess(getRequestToken(request), boothNo);
     if (!access.canWrite) {
-      return NextResponse.json({ error: '수정 권한 없음' }, { status: 403 });
+      return NextResponse.json({ error: '요청을 처리할 수 없습니다.' }, { status: 403 });
     }
 
     const booth = await getBoothWithStatus(boothNo);

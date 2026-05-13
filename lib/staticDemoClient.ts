@@ -33,7 +33,6 @@ type StaticState = {
 };
 
 const STORAGE_KEY = 'smartyouth-static-demo-state';
-const STATIC_HQ_TOKEN = 'demo-hq';
 const STATIC_PRERENDERED_AT = '2026-05-12T09:00:00.000Z';
 
 function demoBoothToken(boothNo: number) {
@@ -179,7 +178,7 @@ export function getInitialStaticStatus(token?: string | null, boothNo?: number):
 
 export async function patchStaticStatus(boothNo: number, token: string | null | undefined, patch: StatusPatch) {
   const access = canWrite(token, boothNo);
-  if (!access.canEditBooth) throw new Error('수정 권한 없음');
+  if (!access.canEditBooth) throw new Error('요청을 처리할 수 없습니다.');
 
   const state = readState();
   const now = new Date().toISOString();
@@ -219,7 +218,7 @@ export async function patchStaticAllOperationStatuses(
   token: string | null | undefined,
   operationStatus: OperationStatus
 ) {
-  if (!canWrite(token).hq) throw new Error('수정 권한 없음');
+  if (!canWrite(token).hq) throw new Error('요청을 처리할 수 없습니다.');
 
   const state = readState();
   const now = new Date().toISOString();
@@ -255,7 +254,7 @@ export async function patchStaticAllOperationStatuses(
 }
 
 export async function resetStaticOperations(token: string | null | undefined) {
-  if (!canWrite(token).hq) throw new Error('수정 권한 없음');
+  if (!canWrite(token).hq) throw new Error('요청을 처리할 수 없습니다.');
 
   const now = new Date().toISOString();
   const state = readState(now);
@@ -344,7 +343,7 @@ export async function createStaticHelp(
 }
 
 export async function patchStaticIncident(token: string | null | undefined, incidentId: string, status: IncidentStatus) {
-  if (!canWrite(token).hq) throw new Error('수정 권한 없음');
+  if (!canWrite(token).hq) throw new Error('요청을 처리할 수 없습니다.');
 
   const state = readState();
   const now = new Date().toISOString();
@@ -360,7 +359,7 @@ export async function patchStaticIncident(token: string | null | undefined, inci
 }
 
 export async function resetStaticHelpRequests(token: string | null | undefined) {
-  if (!canWrite(token).hq) throw new Error('수정 권한 없음');
+  if (!canWrite(token).hq) throw new Error('요청을 처리할 수 없습니다.');
 
   const state = readState();
   const now = new Date().toISOString();

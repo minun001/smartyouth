@@ -10,7 +10,7 @@ const incidentStatuses: IncidentStatus[] = ['NEW', 'IN_PROGRESS', 'RESOLVED'];
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     if (!verifyHqToken(getRequestToken(request))) {
-      return NextResponse.json({ error: '수정 권한 없음' }, { status: 403 });
+      return NextResponse.json({ error: '요청을 처리할 수 없습니다.' }, { status: 403 });
     }
 
     const { id } = await context.params;
