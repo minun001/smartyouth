@@ -1,9 +1,9 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
 import DashboardView from './DashboardView';
+import { useUrlToken } from '@/lib/useUrlToken';
 
 export default function HqTokenPage() {
-  const searchParams = useSearchParams();
-  return <DashboardView mode="hq" token={searchParams.get('t')} view="map" />;
+  const token = useUrlToken();
+  return <DashboardView mode="hq" token={token} view="map" />;
 }

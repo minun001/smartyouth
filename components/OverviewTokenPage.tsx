@@ -1,11 +1,10 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
 import DashboardView from './DashboardView';
+import { useUrlToken } from '@/lib/useUrlToken';
 
 export default function OverviewTokenPage() {
-  const searchParams = useSearchParams();
-  const token = searchParams.get('t');
+  const token = useUrlToken();
 
   return <DashboardView mode={token ? 'hq' : 'public'} token={token} view="overview" />;
 }

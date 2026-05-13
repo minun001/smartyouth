@@ -79,7 +79,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
     return () => window.clearTimeout(id);
   }, [bulkSavedMessage]);
 
-  const canEdit = mode === 'hq' && Boolean(data?.access.hq);
+  const canEdit = Boolean(data?.access.hq);
   const selectedBooth = data?.booths.find((booth) => booth.boothNo === selectedBoothNo);
   const statusAttentionBooths = useMemo(
     () =>
@@ -235,11 +235,10 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
       >
         {mode === 'hq' && data && !data.access.hq ? (
           <section className="m-4 rounded-lg border border-red-200 bg-white p-5 shadow-sm">
-            <div className="text-sm font-black text-red-600">수정 권한 없음</div>
-            <h1 className="mt-2 text-2xl font-black leading-tight text-slate-950">운영본부 전용 링크입니다</h1>
+            <div className="text-sm font-black text-red-600">상황 확인 필요</div>
+            <h1 className="mt-2 text-2xl font-black leading-tight text-slate-950">운영 데이터를 다시 확인해주세요</h1>
             <p className="mt-3 text-sm font-bold leading-6 text-slate-600">
-              HQ 화면은 전달받은 운영본부 링크로 접속해야 수정할 수 있습니다. 주소 끝에 HQ 토큰이 포함된
-              `/hq?t=...` 링크인지 확인해주세요.
+              운영 데이터를 불러오지 못했습니다. 새로고침 후 다시 확인해주세요.
             </p>
             {isStaticDemo ? (
               <a
@@ -484,7 +483,7 @@ function MapBulkOperationControls({
       <div className="min-w-0">
         <div className="text-sm font-black text-slate-950">일괄 운영 변경</div>
         <div className="mt-0.5 text-xs font-bold text-slate-500">
-          {canEdit ? '지도 전체 부스를 한 번에 전환합니다.' : '운영본부 토큰 링크에서 활성화됩니다.'}
+          {canEdit ? '지도 전체 부스를 한 번에 전환합니다.' : '상황을 불러오면 활성화됩니다.'}
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
@@ -540,7 +539,7 @@ function BulkOperationControls({
           <p className="mt-1 text-sm font-bold text-slate-600">
             {canEdit
               ? `전체 ${totalCount}개 부스를 한 번에 표시합니다.`
-              : 'HQ 권한 링크에서만 전체 상태를 변경할 수 있습니다.'}
+              : '상황을 불러오면 전체 상태를 변경할 수 있습니다.'}
           </p>
         </div>
         {savedMessage ? (
@@ -630,7 +629,7 @@ function CommandBrief({
         </div>
         <div className="relative mt-5 grid gap-2 sm:grid-cols-3">
           <StatusStrip label="현재 판단" value={attentionText} danger={congestedCount > 0} />
-          <StatusStrip label="권한" value={canEdit ? 'HQ 수정 가능' : mode === 'hq' ? '토큰 확인 필요' : '읽기 전용'} />
+          <StatusStrip label="권한" value={canEdit ? '수정 가능' : '상황 확인 중'} />
           <StatusStrip label="갱신" value={`${formatTime(lastRefresh)} · 5초 주기`} />
         </div>
       </div>

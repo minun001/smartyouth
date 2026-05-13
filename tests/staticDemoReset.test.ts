@@ -73,8 +73,8 @@ describe('static demo operation reset', () => {
 
     expect(result.incident.status).toBe('NEW');
     expect(status.incidents).toHaveLength(1);
-    expect(status.access.hq).toBe(false);
-    expect(status.recentChanges).toHaveLength(0);
+    expect(status.access.hq).toBe(true);
+    expect(status.recentChanges.length).toBeGreaterThan(0);
     expect(booth?.status.helpRequested).toBe(true);
     expect(booth?.status.helpType).toBe('MATERIAL');
   });

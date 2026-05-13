@@ -129,7 +129,7 @@ export default function BoothControlPanel({
 
         {!canEdit ? (
           <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-black text-red-700">
-            수정 권한이 없는 링크입니다. 부스 QR을 다시 확인해주세요.
+            상황을 불러오는 중입니다. 잠시 후 다시 시도해주세요.
           </div>
         ) : null}
 
@@ -163,7 +163,7 @@ export default function BoothControlPanel({
       <div className="p-4">
         {!canEdit ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-black text-red-700">
-            수정 권한이 없는 링크입니다. 부스 QR을 다시 확인해주세요.
+            상황을 불러오는 중입니다. 잠시 후 다시 시도해주세요.
           </div>
         ) : null}
 

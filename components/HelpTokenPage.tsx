@@ -1,9 +1,9 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
 import HelpPageClient from './HelpPageClient';
+import { useUrlToken } from '@/lib/useUrlToken';
 
 export default function HelpTokenPage() {
-  const searchParams = useSearchParams();
-  return <HelpPageClient token={searchParams.get('t') ?? undefined} />;
+  const token = useUrlToken();
+  return <HelpPageClient token={token ?? undefined} />;
 }

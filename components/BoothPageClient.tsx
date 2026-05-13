@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import AppHeader from './AppHeader';
 import BoothControlPanel from './BoothControlPanel';
 import BottomNav from './BottomNav';
@@ -9,6 +8,7 @@ import { apiPath, isStaticDemo } from '@/lib/clientConfig';
 import { getInitialStaticStatus, getStaticStatus, type ClientStatusResponse } from '@/lib/staticDemoClient';
 import type { BoothStatus } from '@/lib/types';
 import { useRealtimeRefresh } from '@/lib/useRealtimeRefresh';
+import { useUrlToken } from '@/lib/useUrlToken';
 
 type BoothPageClientProps = {
   boothNo: number;
@@ -16,8 +16,8 @@ type BoothPageClientProps = {
 };
 
 export default function BoothPageClient({ boothNo, token }: BoothPageClientProps) {
-  const searchParams = useSearchParams();
-  const activeToken = token ?? searchParams.get('t') ?? undefined;
+  const urlToken = useUrlToken();
+  const activeToken = token ?? urlToken ?? undefined;
   const [data, setData] = useState<ClientStatusResponse | null>(() =>
     isStaticDemo ? getInitialStaticStatus(activeToken, boothNo) : null
   );

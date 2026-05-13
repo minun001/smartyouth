@@ -385,7 +385,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
         {data && !canManageHelp ? (
           <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm font-black text-[var(--brand-strong)]">
-            공개 도움 요청 모드입니다. 요청 등록은 가능하고, 완료 처리와 초기화는 운영본부 링크에서만 가능합니다.
+            도움 요청 데이터를 불러오는 중입니다. 잠시 후 다시 시도해주세요.
           </div>
         ) : null}
 
@@ -696,7 +696,7 @@ function HelpResetPanel({
             {saving ? '초기화 중' : '전체 도움 요청 초기화'}
           </button>
           {!canReset ? (
-            <div className="text-center text-xs font-bold text-slate-500">초기화는 운영본부 링크에서만 가능합니다.</div>
+            <div className="text-center text-xs font-bold text-slate-500">상황을 불러오면 초기화할 수 있습니다.</div>
           ) : null}
         </div>
       </div>

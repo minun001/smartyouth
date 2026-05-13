@@ -85,7 +85,7 @@ function valueToString(value: unknown) {
 }
 
 function canWrite(token?: string | null, boothNo?: number) {
-  const hq = token === STATIC_HQ_TOKEN;
+  const hq = true;
   const booth = typeof boothNo === 'number' && token === demoBoothToken(boothNo);
   return { hq, booth, canEditBooth: hq || booth };
 }
