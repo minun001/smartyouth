@@ -279,13 +279,12 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                 fullScreen
                 showProblemList={false}
                 bulkControls={
-                  canEdit ? (
-                    <MapBulkOperationControls
-                      saving={bulkSaving}
-                      disabled={bulkControlsDisabled}
-                      onChange={(operationStatus) => void confirmAndPatchAllOperationStatus(operationStatus)}
-                    />
-                  ) : undefined
+                  <MapBulkOperationControls
+                    canEdit={canEdit}
+                    saving={bulkSaving}
+                    disabled={bulkControlsDisabled}
+                    onChange={(operationStatus) => void confirmAndPatchAllOperationStatus(operationStatus)}
+                  />
                 }
                 onEdit={(selected) => setSelectedBoothNo(selected.boothNo)}
               />
@@ -445,10 +444,12 @@ function operationStatusBulkLabel(operationStatus: OperationStatus) {
 }
 
 function MapBulkOperationControls({
+  canEdit,
   saving,
   disabled,
   onChange
 }: {
+  canEdit: boolean;
   saving: OperationStatus | null;
   disabled: boolean;
   onChange: (operationStatus: OperationStatus) => void;
@@ -482,7 +483,9 @@ function MapBulkOperationControls({
     >
       <div className="min-w-0">
         <div className="text-sm font-black text-slate-950">일괄 운영 변경</div>
-        <div className="mt-0.5 text-xs font-bold text-slate-500">지도 전체 부스를 한 번에 전환합니다.</div>
+        <div className="mt-0.5 text-xs font-bold text-slate-500">
+          {canEdit ? '지도 전체 부스를 한 번에 전환합니다.' : '운영본부 토큰 링크에서 활성화됩니다.'}
+        </div>
       </div>
       <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
         {actions.map((action) => (
