@@ -14,12 +14,15 @@ describe('situation status colors', () => {
     expect(operationStatusColor('CLOSED')).toBe(situationColors.closed);
   });
 
-  it('uses attention orange for paused or congested booths', () => {
+  it('uses attention orange for paused, congested, or material issue booths', () => {
     expect(situationStatusColor('READY', 0)).toBe(situationColors.normal);
     expect(situationStatusColor('OPEN', 0)).toBe(situationColors.open);
     expect(situationStatusColor('OPEN', 3)).toBe(situationColors.attention);
     expect(situationStatusColor('PAUSED', 0)).toBe(situationColors.attention);
+    expect(situationStatusColor('READY', 0, 'LOW')).toBe(situationColors.attention);
+    expect(situationStatusColor('OPEN', 0, 'OUT')).toBe(situationColors.attention);
     expect(situationStatusColor('CLOSED', 4)).toBe(situationColors.closed);
+    expect(situationStatusColor('CLOSED', 0, 'OUT')).toBe(situationColors.closed);
   });
 
   it('uses the same binary colors for congestion labels', () => {

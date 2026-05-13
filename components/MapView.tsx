@@ -7,7 +7,6 @@ import {
   boothTypeLabels,
   congestionStatusColor,
   congestionStatusLabel,
-  isCongestedLevel,
   isLongWaitMinutes,
   operationStatusColor,
   operationStatusLabels,
@@ -446,14 +445,15 @@ export default function MapView({
                   .filter((booth) => typeof booth.x === 'number' && typeof booth.y === 'number')
                   .map((booth) => {
                     const selected = booth.boothNo === selectedBoothNo;
-                    const isCongested = isCongestedLevel(booth.status.congestionLevel);
                     const position = BOOTH_POSITION_OVERRIDES[booth.boothNo] ?? { x: booth.x ?? 0, y: booth.y ?? 0 };
                     const left = transform.x + (position.x / 100) * MAP_IMAGE_WIDTH * transform.scale;
                     const top = transform.y + (position.y / 100) * MAP_IMAGE_HEIGHT * transform.scale;
                     const markerColor = situationStatusColor(
                       booth.status.operationStatus,
-                      booth.status.congestionLevel
+                      booth.status.congestionLevel,
+                      booth.status.materialStatus
                     );
+                    const needsAttention = markerColor === situationColors.attention;
 
                     return (
                       <button
@@ -482,7 +482,7 @@ export default function MapView({
                         <span
                           className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-black text-white shadow-lg ${
                             selected ? 'ring-4 ring-[var(--asan-yellow)]' : ''
-                          } ${isCongested ? 'shadow-orange-200' : ''}`}
+                          } ${needsAttention ? 'shadow-orange-200' : ''}`}
                           style={{ backgroundColor: markerColor }}
                         >
                           {booth.boothNo}
@@ -612,7 +612,7 @@ function SelectedBoothFloat({
   const status = booth.status;
   const operationColor = operationStatusColor(status.operationStatus);
   const congestionColor = congestionStatusColor(status.congestionLevel);
-  const situationColor = situationStatusColor(status.operationStatus, status.congestionLevel);
+  const situationColor = situationStatusColor(status.operationStatus, status.congestionLevel, status.materialStatus);
   const longWait = isLongWaitMinutes(status.waitMinutes);
   const name = booth.name.length > 24 ? `${booth.name.slice(0, 24)}...` : booth.name;
 

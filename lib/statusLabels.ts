@@ -77,9 +77,20 @@ export function congestionStatusSoftColor(level: CongestionLevel) {
   return isCongestedLevel(level) ? '#fff7ed' : '#f0fdf4';
 }
 
-export function situationStatusColor(operationStatus: OperationStatus, congestionLevel: CongestionLevel) {
+export function situationStatusColor(
+  operationStatus: OperationStatus,
+  congestionLevel: CongestionLevel,
+  materialStatus?: MaterialStatus
+) {
   if (operationStatus === 'CLOSED') return situationColors.closed;
-  if (operationStatus === 'PAUSED' || isCongestedLevel(congestionLevel)) return situationColors.attention;
+  if (
+    operationStatus === 'PAUSED' ||
+    isCongestedLevel(congestionLevel) ||
+    materialStatus === 'LOW' ||
+    materialStatus === 'OUT'
+  ) {
+    return situationColors.attention;
+  }
   if (operationStatus === 'OPEN') return situationColors.open;
   return situationColors.normal;
 }

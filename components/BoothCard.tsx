@@ -36,7 +36,7 @@ export default function BoothCard({
   const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
   const expanded = controlledExpanded ?? internalExpanded;
   const status = booth.status;
-  const priorityColor = situationStatusColor(status.operationStatus, status.congestionLevel);
+  const priorityColor = situationStatusColor(status.operationStatus, status.congestionLevel, status.materialStatus);
   const longWait = isLongWaitMinutes(status.waitMinutes);
 
   function setExpanded(nextExpanded: boolean) {
