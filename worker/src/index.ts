@@ -432,7 +432,7 @@ async function routeApi(request: Request, env: Env) {
     if (access.scope !== 'hq') return json(request, env, { error: '수정 권한 없음' }, { status: 403 });
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const operationStatus = body.operationStatus as OperationStatus;
-    if (!['OPEN', 'CLOSED'].includes(operationStatus)) {
+    if (!['READY', 'OPEN', 'CLOSED'].includes(operationStatus)) {
       return json(request, env, { error: 'Invalid operation status.' }, { status: 400 });
     }
     const booths = await listBooths(env);
