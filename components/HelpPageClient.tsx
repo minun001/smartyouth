@@ -376,7 +376,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
         resetDisabled={!canManageHelp || resetSaving || activeCount + resolvedCount === 0}
         resetLoading={resetSaving}
       />
-      <main className="safe-bottom mx-auto max-w-6xl space-y-4 px-4 py-4 sm:py-5">
+      <main className="safe-bottom content-shell content-gutter space-y-4 py-4 sm:py-5">
         <section className="rounded-lg bg-gradient-to-br from-[var(--asan-blue)] via-[var(--asan-sky)] to-[var(--asan-green)] p-5 text-white shadow-[0_24px_60px_rgba(0,96,176,0.22)]">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -386,7 +386,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                 부스 번호와 내용을 등록하고, 해결된 요청은 완료 영역으로 끌어 옮깁니다.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:min-w-[240px]">
+            <div className="grid grid-cols-2 gap-2 sm:min-w-[240px] xl:min-w-[320px]">
               <QueueMetric label="처리할 요청" value={activeCount} danger={activeCount > 0} />
               <QueueMetric label="완료" value={resolvedCount} />
             </div>
@@ -437,7 +437,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
               </div>
 
               {activeIncidents.length > 0 ? (
-                <div className="grid gap-3 lg:grid-cols-2">
+                <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
                   {activeIncidents.map((incident) => {
                     const isDragging = draggingId === incident.id;
                     const isCompleting = completingId === incident.id;
@@ -574,7 +574,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                 </span>
               </div>
               {resolvedIncidents.length > 0 ? (
-                <div className="grid gap-3 lg:grid-cols-2">
+                <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
                   {resolvedIncidents.slice(0, 8).map((incident) => (
                     <article
                       key={incident.id}

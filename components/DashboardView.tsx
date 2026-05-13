@@ -225,7 +225,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
         className={
           isMapView
             ? 'flex h-[calc(100dvh-var(--app-header-height))] overflow-hidden bg-slate-100 pb-[var(--bottom-nav-map-clearance)]'
-            : 'safe-bottom mx-auto max-w-6xl space-y-4 px-4 py-4 sm:py-5'
+            : 'safe-bottom content-shell content-gutter space-y-4 py-4 sm:py-5'
         }
       >
         {mode === 'hq' && data && !data.access.hq ? (
@@ -277,7 +277,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                 />
               </div>
               {selectedBooth && canEdit ? (
-                <div className="safe-scroll-bottom min-h-0 flex-1 overflow-y-auto bg-slate-100 p-3 lg:w-[420px] lg:flex-none lg:border-l lg:border-[var(--line)] lg:p-4 xl:w-[460px]">
+                <div className="safe-scroll-bottom min-h-0 flex-1 overflow-y-auto bg-slate-100 p-3 lg:w-[420px] lg:flex-none lg:border-l lg:border-[var(--line)] lg:p-4 xl:w-[460px] 2xl:w-[540px]">
                   <div className="mx-auto w-full max-w-xl lg:max-w-none">
                     <BoothControlPanel
                       booth={selectedBooth}
@@ -316,7 +316,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
               {statusAttentionBooths.length > 0 ? (
                 <section className="rounded-lg border border-orange-200 bg-orange-50 p-4 shadow-sm">
                   <SectionHeader title="상태 확인" count={statusAttentionBooths.length} tone="danger" />
-                  <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                  <div className="mt-3 grid gap-3 lg:grid-cols-2 2xl:grid-cols-4">
                     {statusAttentionBooths.slice(0, 4).map((booth) => (
                       <BoothCard
                         key={booth.boothNo}
@@ -363,7 +363,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
 
               <section className="space-y-3">
                 {visibleBooths.length > 0 ? (
-                  <div className="grid gap-3 lg:grid-cols-2">
+                  <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3 min-[1900px]:grid-cols-4">
                     {visibleBooths.map((booth) => (
                       <BoothCard
                         key={booth.boothNo}
@@ -606,13 +606,13 @@ function CommandBrief({
             <h1 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">
               {mode === 'hq' ? '운영본부 관리 모드' : '부스 운영 공개 현황'}
             </h1>
-            <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-white">
+            <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-white xl:max-w-3xl">
               {mode === 'hq'
                 ? '부스별 운영상태와 혼잡도를 한 화면에서 확인하고 즉시 조정합니다.'
                 : '행사 부스의 운영 상태와 혼잡도를 실시간으로 확인할 수 있습니다.'}
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:min-w-[420px]">
+          <div className="grid grid-cols-3 gap-2 sm:min-w-[420px] xl:min-w-[520px]">
             <BriefMetric label="운영중" value={openCount} />
             <BriefMetric label="혼잡" value={congestedCount} danger={congestedCount > 0} />
             <BriefMetric label="전체" value={totalCount} />

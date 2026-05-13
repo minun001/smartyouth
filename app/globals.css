@@ -24,6 +24,8 @@
   --bottom-nav-height: 80px;
   --bottom-nav-clearance: calc(env(safe-area-inset-bottom) + var(--bottom-nav-height) + 128px);
   --bottom-nav-map-clearance: calc(env(safe-area-inset-bottom) + var(--bottom-nav-height) + 24px);
+  --content-max-width: 72rem;
+  --content-gutter: 1rem;
 }
 
 * {
@@ -73,15 +75,52 @@ button {
   scroll-padding-bottom: var(--bottom-nav-clearance);
 }
 
+.content-shell {
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.content-gutter {
+  padding-left: var(--content-gutter);
+  padding-right: var(--content-gutter);
+}
+
 .safe-scroll-bottom {
   padding-bottom: var(--bottom-nav-clearance) !important;
   scroll-padding-bottom: var(--bottom-nav-clearance);
+}
+
+@media (min-width: 640px) {
+  :root {
+    --content-gutter: 1.25rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --content-max-width: 88rem;
+    --content-gutter: 1.5rem;
+  }
 }
 
 @media (min-width: 1024px) {
   .safe-scroll-bottom {
     padding-bottom: 1rem !important;
     scroll-padding-bottom: 1rem;
+  }
+}
+
+@media (min-width: 1536px) {
+  :root {
+    --content-max-width: 104rem;
+  }
+}
+
+@media (min-width: 1900px) {
+  :root {
+    --content-max-width: 118rem;
   }
 }
 

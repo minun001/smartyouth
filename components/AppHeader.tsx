@@ -32,7 +32,7 @@ export default function AppHeader({
 
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-white/95 text-slate-950 shadow-[0_8px_26px_rgba(0,96,176,0.10)] backdrop-blur">
-      <div className="mx-auto flex min-h-[var(--app-header-height)] w-full max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:gap-3">
+      <div className="content-shell content-gutter flex min-h-[var(--app-header-height)] items-center justify-between gap-2 py-3 sm:gap-3">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <div className="flex h-11 w-[122px] shrink-0 items-center rounded-md bg-white px-2 sm:h-12 sm:w-[154px] sm:px-3">
             <img
