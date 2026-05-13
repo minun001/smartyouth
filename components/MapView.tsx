@@ -47,12 +47,22 @@ const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 3.2;
 const TOUCH_FOCUS_ZOOM = 0.92;
 const MARKER_SIZE = 44;
+const MAP_ANIMATION_MS = 220;
+const WHEEL_ZOOM_SENSITIVITY = 0.0015;
 const BOOTH_POSITION_OVERRIDES: Record<number, Point> = {
   8: { x: 33.0, y: 64.8 }
 };
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function lerp(start: number, end: number, progress: number) {
+  return start + (end - start) * progress;
+}
+
+function easeOutCubic(progress: number) {
+  return 1 - Math.pow(1 - progress, 3);
 }
 
 function getFitScale(size: ViewportSize) {
@@ -198,6 +208,7 @@ export default function MapView({
   const pointersRef = useRef(new Map<number, Point>());
   const lastPanPointRef = useRef<Point | null>(null);
   const lastPinchRef = useRef<{ distance: number; midpoint: Point } | null>(null);
+  const transformAnimationRef = useRef<number | null>(null);
   const didDragRef = useRef(false);
   const hasMeasuredViewportRef = useRef(false);
   const hasUserAdjustedMapRef = useRef(false);
@@ -215,7 +226,14 @@ export default function MapView({
     Math.abs(transform.x - defaultTransform.x) > 1 ||
     Math.abs(transform.y - defaultTransform.y) > 1;
 
-  const setTransform = useCallback(
+  const cancelTransformAnimation = useCallback(() => {
+    if (transformAnimationRef.current !== null) {
+      window.cancelAnimationFrame(transformAnimationRef.current);
+      transformAnimationRef.current = null;
+    }
+  }, []);
+
+  const applyTransform = useCallback(
     (nextTransform: MapTransform) => {
       const constrained = constrainTransform(nextTransform, viewportSize);
       transformRef.current = constrained;
@@ -224,26 +242,80 @@ export default function MapView({
     [viewportSize]
   );
 
+  const setTransform = useCallback(
+    (nextTransform: MapTransform) => {
+      cancelTransformAnimation();
+      applyTransform(nextTransform);
+    },
+    [applyTransform, cancelTransformAnimation]
+  );
+
+  const animateTransform = useCallback(
+    (nextTransform: MapTransform, duration = MAP_ANIMATION_MS) => {
+      if (!viewportSize.width || !viewportSize.height || duration <= 0) {
+        setTransform(nextTransform);
+        return;
+      }
+
+      cancelTransformAnimation();
+      const startTransform = transformRef.current;
+      const targetTransform = constrainTransform(nextTransform, viewportSize);
+      const startedAt = performance.now();
+
+      const step = (now: number) => {
+        const progress = clamp((now - startedAt) / duration, 0, 1);
+        const eased = easeOutCubic(progress);
+        const next = {
+          scale: lerp(startTransform.scale, targetTransform.scale, eased),
+          x: lerp(startTransform.x, targetTransform.x, eased),
+          y: lerp(startTransform.y, targetTransform.y, eased)
+        };
+
+        transformRef.current = next;
+        setTransformState(next);
+
+        if (progress < 1) {
+          transformAnimationRef.current = window.requestAnimationFrame(step);
+          return;
+        }
+
+        transformAnimationRef.current = null;
+        transformRef.current = targetTransform;
+        setTransformState(targetTransform);
+      };
+
+      transformAnimationRef.current = window.requestAnimationFrame(step);
+    },
+    [cancelTransformAnimation, setTransform, viewportSize]
+  );
+
   const zoomAround = useCallback(
-    (nextScale: number, point: Point) => {
+    (nextScale: number, point: Point, options?: { animate?: boolean }) => {
       hasUserAdjustedMapRef.current = true;
       const current = transformRef.current;
       const scale = clamp(nextScale, minScale, MAX_ZOOM);
       const mapX = (point.x - current.x) / current.scale;
       const mapY = (point.y - current.y) / current.scale;
-      setTransform({
+      const nextTransform = {
         scale,
         x: point.x - mapX * scale,
         y: point.y - mapY * scale
-      });
+      };
+
+      if (options?.animate) {
+        animateTransform(nextTransform);
+        return;
+      }
+
+      setTransform(nextTransform);
     },
-    [minScale, setTransform]
+    [animateTransform, minScale, setTransform]
   );
 
   const resetTransform = useCallback(() => {
     hasUserAdjustedMapRef.current = false;
-    setTransform(defaultTransform);
-  }, [defaultTransform, setTransform]);
+    animateTransform(defaultTransform);
+  }, [animateTransform, defaultTransform]);
 
   const focusBooth = useCallback(
     (booth: BoothWithStatus) => {
@@ -252,10 +324,14 @@ export default function MapView({
       }
 
       hasUserAdjustedMapRef.current = true;
-      setTransform(getBoothFocusTransform(booth, viewportSize, transformRef.current, fullScreen));
+      animateTransform(getBoothFocusTransform(booth, viewportSize, transformRef.current, fullScreen), 260);
     },
-    [fullScreen, setTransform, viewportSize]
+    [animateTransform, fullScreen, viewportSize]
   );
+
+  useEffect(() => {
+    return () => cancelTransformAnimation();
+  }, [cancelTransformAnimation]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -268,6 +344,7 @@ export default function MapView({
         width: entry.contentRect.width,
         height: entry.contentRect.height
       };
+      cancelTransformAnimation();
       setViewportSize(nextSize);
       const shouldUseDefault = !hasMeasuredViewportRef.current || !hasUserAdjustedMapRef.current;
       const nextTransform = constrainTransform(
@@ -286,13 +363,14 @@ export default function MapView({
     observer.observe(viewport);
 
     return () => observer.disconnect();
-  }, []);
+  }, [cancelTransformAnimation]);
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest('[data-booth-marker], [data-map-control], [data-map-panel]')) {
       return;
     }
 
+    cancelTransformAnimation();
     event.currentTarget.setPointerCapture(event.pointerId);
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     didDragRef.current = false;
@@ -308,7 +386,7 @@ export default function MapView({
         midpoint: getMidpoint(pointers[0], pointers[1])
       };
     }
-  }, []);
+  }, [cancelTransformAnimation]);
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -363,13 +441,16 @@ export default function MapView({
 
   const handleWheel = useCallback(
     (event: React.WheelEvent<HTMLDivElement>) => {
-      if (!event.ctrlKey && Math.abs(event.deltaY) < Math.abs(event.deltaX)) {
+      const horizontalDominant = Math.abs(event.deltaX) > Math.abs(event.deltaY);
+      if (!event.ctrlKey && horizontalDominant) {
         return;
       }
 
       event.preventDefault();
       const rect = event.currentTarget.getBoundingClientRect();
-      zoomAround(transformRef.current.scale * (event.deltaY > 0 ? 0.88 : 1.12), {
+      const normalizedDeltaY = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
+      const scaleFactor = clamp(Math.exp(-normalizedDeltaY * WHEEL_ZOOM_SENSITIVITY), 0.86, 1.16);
+      zoomAround(transformRef.current.scale * scaleFactor, {
         x: event.clientX - rect.left,
         y: event.clientY - rect.top
       });
@@ -425,7 +506,8 @@ export default function MapView({
               style={{
                 width: MAP_IMAGE_WIDTH,
                 height: MAP_IMAGE_HEIGHT,
-                transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.scale})`
+                transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.scale})`,
+                willChange: 'transform'
               }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -496,10 +578,14 @@ export default function MapView({
                 type="button"
                 data-map-control="zoom-in"
                 onClick={() =>
-                  zoomAround(transform.scale * 1.2, {
-                    x: viewportSize.width / 2,
-                    y: viewportSize.height / 2
-                  })
+                  zoomAround(
+                    transformRef.current.scale * 1.25,
+                    {
+                      x: viewportSize.width / 2,
+                      y: viewportSize.height / 2
+                    },
+                    { animate: true }
+                  )
                 }
                 className="flex h-11 w-11 items-center justify-center border-r border-slate-200 text-xl font-black text-slate-800"
                 aria-label="지도 확대"
@@ -510,10 +596,14 @@ export default function MapView({
                 type="button"
                 data-map-control="zoom-out"
                 onClick={() =>
-                  zoomAround(transform.scale / 1.2, {
-                    x: viewportSize.width / 2,
-                    y: viewportSize.height / 2
-                  })
+                  zoomAround(
+                    transformRef.current.scale / 1.25,
+                    {
+                      x: viewportSize.width / 2,
+                      y: viewportSize.height / 2
+                    },
+                    { animate: true }
+                  )
                 }
                 disabled={!canZoomOut}
                 className="flex h-11 w-11 items-center justify-center border-r border-slate-200 text-xl font-black text-slate-800 disabled:text-slate-300"
