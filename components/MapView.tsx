@@ -379,8 +379,8 @@ export default function MapView({
   return (
     <section className={fullScreen ? 'relative flex h-full min-w-0 flex-1 flex-col bg-slate-100' : 'space-y-4'}>
       {fullScreen ? (
-        <div className="shrink-0 border-b border-[var(--line)] bg-white px-4 py-3 shadow-[0_10px_24px_rgba(0,96,176,0.10)]">
-          {bulkControls ? <div className="mb-3">{bulkControls}</div> : null}
+        <div className="shrink-0 border-b border-[var(--line)] bg-white px-3 py-2 shadow-[0_10px_24px_rgba(0,96,176,0.10)] sm:px-4 sm:py-3">
+          {bulkControls ? <div className="mb-2 sm:mb-3">{bulkControls}</div> : null}
           <MapLegend />
         </div>
       ) : null}
@@ -683,7 +683,7 @@ const legendItems = [
 
 function MapLegend() {
   return (
-    <div data-map-legend="true" className="flex flex-wrap items-center gap-3">
+    <div data-map-legend="true" className="flex flex-wrap items-center gap-2 sm:gap-3">
       {legendItems.map((item) => (
         <LegendDot key={item.label} color={item.color} label={item.label} />
       ))}
@@ -694,10 +694,10 @@ function MapLegend() {
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <span
-      className="flex items-center gap-2 rounded-md bg-white px-3 py-2 text-base font-black shadow-sm sm:text-lg"
+      className="flex items-center gap-1.5 rounded-md bg-white px-2 py-1.5 text-sm font-black shadow-sm sm:gap-2 sm:px-3 sm:py-2 sm:text-lg"
       style={{ color }}
     >
-      <span className="h-4 w-4 rounded-full" style={{ backgroundColor: color }} />
+      <span className="h-3.5 w-3.5 rounded-full sm:h-4 sm:w-4" style={{ backgroundColor: color }} />
       {label}
     </span>
   );

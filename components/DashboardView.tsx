@@ -208,9 +208,10 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
 
   const isMapView = view === 'map';
   const bulkControlsDisabled = !canEdit || Boolean(bulkSaving) || resetSaving;
+  const headerHeight = canEdit ? '120px' : '76px';
 
   return (
-    <div className="min-h-screen text-slate-950">
+    <div className="min-h-screen text-slate-950" style={{ '--app-header-height': headerHeight } as React.CSSProperties}>
       <AppHeader
         title={isMapView ? '운영 상황' : mode === 'hq' ? '전체 상황 관리' : '전체 상황'}
         lastRefresh={data?.refreshedAt}
@@ -469,9 +470,9 @@ function MapBulkOperationControls({
   return (
     <div
       data-map-bulk-controls="true"
-      className="flex flex-col gap-2 rounded-lg border border-[var(--line)] bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between"
+      className="flex flex-col gap-2 rounded-lg border border-[var(--line)] bg-slate-50 p-2 sm:flex-row sm:items-center sm:justify-between sm:p-3"
     >
-      <div className="min-w-0">
+      <div className="hidden min-w-0 sm:block">
         <div className="text-sm font-black text-slate-950">일괄 운영 변경</div>
         <div className="mt-0.5 text-xs font-bold text-slate-500">
           {canEdit ? '지도 전체 부스를 한 번에 전환합니다.' : '상황을 불러오면 활성화됩니다.'}

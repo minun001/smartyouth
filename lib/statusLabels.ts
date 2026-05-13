@@ -19,8 +19,8 @@ export const operationStatusOrder: OperationStatus[] = ['READY', 'OPEN', 'PAUSED
 
 export const situationColors = {
   normal: '#0060b0',
-  open: '#16a34a',
-  attention: '#f97316',
+  open: '#15803d',
+  attention: '#c2410c',
   closed: '#020617'
 } as const;
 
