@@ -69,18 +69,18 @@ button {
 }
 
 .safe-bottom {
-  padding-bottom: var(--bottom-nav-clearance);
+  padding-bottom: var(--bottom-nav-clearance) !important;
   scroll-padding-bottom: var(--bottom-nav-clearance);
 }
 
 .safe-scroll-bottom {
-  padding-bottom: var(--bottom-nav-clearance);
+  padding-bottom: var(--bottom-nav-clearance) !important;
   scroll-padding-bottom: var(--bottom-nav-clearance);
 }
 
 @media (min-width: 1024px) {
   .safe-scroll-bottom {
-    padding-bottom: 1rem;
+    padding-bottom: 1rem !important;
     scroll-padding-bottom: 1rem;
   }
 }
