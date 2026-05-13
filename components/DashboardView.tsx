@@ -100,14 +100,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
         if (filter === 'closed') return booth.status.operationStatus === 'CLOSED';
         return true;
       })
-      .sort((a, b) => {
-        if (a.problem !== b.problem) return a.problem ? -1 : 1;
-        if (a.status.helpRequested !== b.status.helpRequested) return a.status.helpRequested ? -1 : 1;
-        if (a.status.congestionLevel !== b.status.congestionLevel) {
-          return b.status.congestionLevel - a.status.congestionLevel;
-        }
-        return a.boothNo - b.boothNo;
-      });
+      .sort((a, b) => a.boothNo - b.boothNo);
   }, [data, filter]);
 
   function applyLocalStatus(status: BoothStatus) {
