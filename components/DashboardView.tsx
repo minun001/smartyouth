@@ -461,7 +461,7 @@ function MapBulkOperationControls({
     {
       status: 'READY',
       label: '일괄 준비중',
-      className: 'border-[var(--asan-blue)] bg-sky-50 text-[var(--brand-strong)]'
+      className: 'border-[var(--asan-blue)] bg-[var(--asan-blue)] text-white'
     },
     {
       status: 'OPEN',
