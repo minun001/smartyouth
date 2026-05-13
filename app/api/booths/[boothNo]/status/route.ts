@@ -23,6 +23,9 @@ function normalizePatch(body: Record<string, unknown>): StatusPatch {
 
   if (typeof body.waitMinutes === 'number' && waitMinutes.includes(body.waitMinutes as (typeof waitMinutes)[number])) {
     patch.waitMinutes = body.waitMinutes as StatusPatch['waitMinutes'];
+    if (body.waitMinutes >= 10) {
+      patch.congestionLevel = 3;
+    }
   }
 
   if (typeof body.materialStatus === 'string' && materialStatuses.includes(body.materialStatus as MaterialStatus)) {

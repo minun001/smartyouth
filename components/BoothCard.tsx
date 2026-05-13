@@ -6,9 +6,11 @@ import {
   boothTypeLabels,
   congestionStatusColor,
   congestionStatusLabel,
+  isLongWaitMinutes,
   operationStatusColor,
   operationStatusLabels,
-  situationStatusColor
+  situationStatusColor,
+  waitMinutesLabel
 } from '@/lib/statusLabels';
 import type { BoothWithStatus } from '@/lib/types';
 
@@ -24,6 +26,7 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
   const [expanded, setExpanded] = useState(defaultExpanded);
   const status = booth.status;
   const priorityColor = situationStatusColor(status.operationStatus, status.congestionLevel);
+  const longWait = isLongWaitMinutes(status.waitMinutes);
 
   return (
     <article
@@ -62,6 +65,14 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
               <span className="font-black" style={{ color: congestionStatusColor(status.congestionLevel) }}>
                 {congestionStatusLabel(status.congestionLevel)}
               </span>
+              <span>·</span>
+              <span
+                className={`rounded px-2 py-0.5 text-xs font-black ${
+                  longWait ? 'bg-gradient-to-r from-red-600 to-orange-500 text-white' : 'bg-slate-100 text-slate-700'
+                }`}
+              >
+                대기 {waitMinutesLabel(status.waitMinutes)}
+              </span>
             </div>
           </div>
         </div>
@@ -77,7 +88,7 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="mt-4 grid grid-cols-3 gap-2">
             <StatusPill
               label="상태"
               value={operationStatusLabels[status.operationStatus]}
@@ -88,6 +99,7 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
               value={congestionStatusLabel(status.congestionLevel)}
               color={congestionStatusColor(status.congestionLevel)}
             />
+            <StatusPill label="대기" value={waitMinutesLabel(status.waitMinutes)} danger={longWait} />
           </div>
 
           {children ? <div className="mt-4">{children}</div> : null}
@@ -97,11 +109,14 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
   );
 }
 
-function StatusPill({ label, value, color }: { label: string; value: string; color?: string }) {
+function StatusPill({ label, value, color, danger }: { label: string; value: string; color?: string; danger?: boolean }) {
   return (
-    <div className="rounded-md bg-white px-3 py-2">
-      <div className="text-[11px] font-black text-slate-500">{label}</div>
-      <div className="mt-0.5 truncate text-base font-black text-slate-900" style={color ? { color } : undefined}>
+    <div className={`rounded-md px-3 py-2 ${danger ? 'bg-gradient-to-r from-red-600 to-orange-500' : 'bg-white'}`}>
+      <div className={`text-[11px] font-black ${danger ? 'text-white/80' : 'text-slate-500'}`}>{label}</div>
+      <div
+        className={`mt-0.5 truncate text-base font-black ${danger ? 'text-white' : 'text-slate-900'}`}
+        style={!danger && color ? { color } : undefined}
+      >
         {value}
       </div>
     </div>

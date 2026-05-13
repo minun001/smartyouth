@@ -3,6 +3,7 @@ import {
   createStaticHelp,
   getStaticStatus,
   patchStaticAllOperationStatuses,
+  patchStaticStatus,
   resetStaticOperations
 } from '../lib/staticDemoClient';
 
@@ -77,5 +78,13 @@ describe('static demo operation reset', () => {
     expect(status.recentChanges.length).toBeGreaterThan(0);
     expect(booth?.status.helpRequested).toBe(true);
     expect(booth?.status.helpType).toBe('MATERIAL');
+  });
+
+  it('marks long wait times as congested automatically', async () => {
+    await patchStaticStatus(3, undefined, { waitMinutes: 10 });
+    const booth = getStaticStatus().booths.find((item) => item.boothNo === 3);
+
+    expect(booth?.status.waitMinutes).toBe(10);
+    expect(booth?.status.congestionLevel).toBe(3);
   });
 });

@@ -92,6 +92,14 @@ export const materialStatusLabels: Record<MaterialStatus, string> = {
 
 export const materialStatusOrder: MaterialStatus[] = ['OK', 'LOW', 'OUT'];
 
+export function waitMinutesLabel(value: 0 | 5 | 10 | 20 | 30) {
+  return value === 30 ? '30분+' : `${value}분`;
+}
+
+export function isLongWaitMinutes(value: number) {
+  return value >= 10;
+}
+
 export const helpTypeLabels: Record<HelpType, string> = {
   STAFF: '인력지원',
   MATERIAL: '재료요청',

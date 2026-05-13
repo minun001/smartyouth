@@ -224,7 +224,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
       <main
         className={
           isMapView
-            ? 'flex h-[calc(100dvh-var(--app-header-height))] overflow-hidden bg-slate-100 pb-[calc(env(safe-area-inset-bottom)+var(--bottom-nav-height))]'
+            ? 'flex h-[calc(100dvh-var(--app-header-height))] overflow-hidden bg-slate-100 pb-[var(--bottom-nav-map-clearance)]'
             : 'safe-bottom mx-auto max-w-6xl space-y-4 px-4 py-4 sm:py-5'
         }
       >
@@ -277,7 +277,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                 />
               </div>
               {selectedBooth && canEdit ? (
-                <div className="min-h-0 flex-1 overflow-y-auto bg-slate-100 p-3 lg:w-[420px] lg:flex-none lg:border-l lg:border-[var(--line)] lg:p-4 xl:w-[460px]">
+                <div className="safe-scroll-bottom min-h-0 flex-1 overflow-y-auto bg-slate-100 p-3 lg:w-[420px] lg:flex-none lg:border-l lg:border-[var(--line)] lg:p-4 xl:w-[460px]">
                   <div className="mx-auto w-full max-w-xl lg:max-w-none">
                     <BoothControlPanel
                       booth={selectedBooth}

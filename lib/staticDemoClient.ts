@@ -180,14 +180,20 @@ export async function patchStaticStatus(boothNo: number, token: string | null | 
   const access = canWrite(token, boothNo);
   if (!access.canEditBooth) throw new Error('요청을 처리할 수 없습니다.');
 
+  const normalizedPatch: StatusPatch = { ...patch };
+  if (typeof normalizedPatch.waitMinutes === 'number' && normalizedPatch.waitMinutes >= 10) {
+    normalizedPatch.congestionLevel = 3;
+  }
+
   const state = readState();
   const now = new Date().toISOString();
   const statusIndex = state.statuses.findIndex((status) => status.boothNo === boothNo);
   const current = statusIndex >= 0 ? state.statuses[statusIndex] : createInitialStatus(boothNo, now);
   const next: BoothStatus = {
     ...current,
-    ...patch,
-    memo: typeof patch.memo === 'string' && patch.memo.trim() ? patch.memo.trim() : current.memo,
+    ...normalizedPatch,
+    memo:
+      typeof normalizedPatch.memo === 'string' && normalizedPatch.memo.trim() ? normalizedPatch.memo.trim() : current.memo,
     updatedAt: now
   };
 
@@ -195,7 +201,7 @@ export async function patchStaticStatus(boothNo: number, token: string | null | 
     next.helpType = undefined;
   }
 
-  const logs = (Object.keys(patch) as (keyof StatusPatch)[])
+  const logs = (Object.keys(normalizedPatch) as (keyof StatusPatch)[])
     .filter((field) => valueToString(current[field]) !== valueToString(next[field]))
     .map((field) => ({
       id: id(),

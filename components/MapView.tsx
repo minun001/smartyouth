@@ -8,10 +8,12 @@ import {
   congestionStatusColor,
   congestionStatusLabel,
   isCongestedLevel,
+  isLongWaitMinutes,
   operationStatusColor,
   operationStatusLabels,
   situationColors,
-  situationStatusColor
+  situationStatusColor,
+  waitMinutesLabel
 } from '@/lib/statusLabels';
 import BoothCard from './BoothCard';
 
@@ -611,6 +613,7 @@ function SelectedBoothFloat({
   const operationColor = operationStatusColor(status.operationStatus);
   const congestionColor = congestionStatusColor(status.congestionLevel);
   const situationColor = situationStatusColor(status.operationStatus, status.congestionLevel);
+  const longWait = isLongWaitMinutes(status.waitMinutes);
   const name = booth.name.length > 24 ? `${booth.name.slice(0, 24)}...` : booth.name;
 
   return (
@@ -642,9 +645,10 @@ function SelectedBoothFloat({
           </button>
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-3 grid grid-cols-3 gap-2">
           <MiniStatus label="상태" value={operationStatusLabels[status.operationStatus]} color={operationColor} />
           <MiniStatus label="혼잡" value={congestionStatusLabel(status.congestionLevel)} color={congestionColor} />
+          <MiniStatus label="대기" value={waitMinutesLabel(status.waitMinutes)} danger={longWait} />
         </div>
 
         {editable ? (
@@ -663,11 +667,14 @@ function SelectedBoothFloat({
   );
 }
 
-function MiniStatus({ label, value, color }: { label: string; value: string; color?: string }) {
+function MiniStatus({ label, value, color, danger }: { label: string; value: string; color?: string; danger?: boolean }) {
   return (
-    <div className="min-w-0 rounded-md bg-slate-50 px-2 py-2 text-center">
-      <div className="text-[10px] font-black text-slate-500">{label}</div>
-      <div className="mt-0.5 truncate text-xs font-black text-slate-950" style={color ? { color } : undefined}>
+    <div className={`min-w-0 rounded-md px-2 py-2 text-center ${danger ? 'bg-gradient-to-r from-red-600 to-orange-500' : 'bg-slate-50'}`}>
+      <div className={`text-[10px] font-black ${danger ? 'text-white/80' : 'text-slate-500'}`}>{label}</div>
+      <div
+        className={`mt-0.5 truncate text-xs font-black ${danger ? 'text-white' : 'text-slate-950'}`}
+        style={!danger && color ? { color } : undefined}
+      >
         {value}
       </div>
     </div>

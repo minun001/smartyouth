@@ -22,6 +22,8 @@
   --line: #d6e7f5;
   --app-header-height: 76px;
   --bottom-nav-height: 80px;
+  --bottom-nav-clearance: calc(env(safe-area-inset-bottom) + var(--bottom-nav-height) + 128px);
+  --bottom-nav-map-clearance: calc(env(safe-area-inset-bottom) + var(--bottom-nav-height) + 24px);
 }
 
 * {
@@ -67,7 +69,20 @@ button {
 }
 
 .safe-bottom {
-  padding-bottom: calc(env(safe-area-inset-bottom) + var(--bottom-nav-height) + 80px);
+  padding-bottom: var(--bottom-nav-clearance);
+  scroll-padding-bottom: var(--bottom-nav-clearance);
+}
+
+.safe-scroll-bottom {
+  padding-bottom: var(--bottom-nav-clearance);
+  scroll-padding-bottom: var(--bottom-nav-clearance);
+}
+
+@media (min-width: 1024px) {
+  .safe-scroll-bottom {
+    padding-bottom: 1rem;
+    scroll-padding-bottom: 1rem;
+  }
 }
 
 .safe-nav {
