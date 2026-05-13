@@ -9,9 +9,9 @@ describe('problem booth detection', () => {
     expect(getProblemReasons(status)).toContain('혼잡');
   });
 
-  it('flags paused status without surfacing material status', () => {
+  it('flags paused and low material status', () => {
     const status = { ...createInitialStatus(1), materialStatus: 'LOW' as const, operationStatus: 'PAUSED' as const };
-    expect(getProblemReasons(status)).toEqual(['잠시중단']);
+    expect(getProblemReasons(status)).toEqual(['잠시중단', '부족']);
   });
 
   it('does not flag a fresh ready booth', () => {

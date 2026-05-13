@@ -62,7 +62,7 @@ export default function AppHeader({
               data-header-reset-all="true"
               onClick={onResetAll}
               disabled={resetDisabled}
-              className="min-h-10 rounded-lg bg-gradient-to-r from-red-600 to-orange-500 px-3 text-xs font-black text-white shadow-sm active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-11 sm:px-4 sm:text-sm"
+              className="min-h-11 rounded-lg bg-gradient-to-r from-red-600 to-orange-500 px-3 text-xs font-black text-white shadow-sm active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-sm"
             >
               {resetLoading ? '초기화 중' : '전체 초기화'}
             </button>
@@ -72,7 +72,7 @@ export default function AppHeader({
               type="button"
               data-header-refresh="true"
               onClick={onRefresh}
-              className="min-h-10 rounded-lg bg-gradient-to-r from-[var(--asan-blue)] to-[var(--asan-sky)] px-3 text-xs font-black text-white active:scale-[0.98] sm:min-h-11 sm:px-4 sm:text-sm"
+              className="min-h-11 rounded-lg bg-gradient-to-r from-[var(--asan-blue)] to-[var(--asan-sky)] px-3 text-xs font-black text-white active:scale-[0.98] sm:px-4 sm:text-sm"
             >
               새로고침
             </button>

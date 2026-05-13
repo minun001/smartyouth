@@ -81,13 +81,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
 
   const canEdit = Boolean(data?.access.hq);
   const selectedBooth = data?.booths.find((booth) => booth.boothNo === selectedBoothNo);
-  const statusAttentionBooths = useMemo(
-    () =>
-      data?.booths.filter(
-        (booth) => booth.status.operationStatus === 'PAUSED' || booth.status.congestionLevel >= 3
-      ) ?? [],
-    [data]
-  );
+  const statusAttentionBooths = useMemo(() => data?.booths.filter((booth) => booth.problem) ?? [], [data]);
   const openCount = useMemo(() => data?.booths.filter((booth) => booth.status.operationStatus === 'OPEN').length ?? 0, [data]);
   const congestedCount = useMemo(
     () => data?.booths.filter((booth) => booth.status.congestionLevel >= 3).length ?? 0,
@@ -521,7 +515,7 @@ function BulkOperationControls({
   const disabled = !canEdit || Boolean(saving) || resetSaving;
 
   function confirmAndChange(operationStatus: OperationStatus) {
-    const label = operationStatus === 'OPEN' ? '운영중' : '마감';
+    const label = operationStatusBulkLabel(operationStatus);
     if (!window.confirm(`전체 ${totalCount}개 부스를 ${label}으로 변경할까요?`)) return;
     onChange(operationStatus);
   }
@@ -544,7 +538,15 @@ function BulkOperationControls({
         ) : null}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-3">
+      <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => confirmAndChange('READY')}
+          className="min-h-14 rounded-lg bg-[var(--asan-blue)] px-3 text-base font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saving === 'READY' ? '변경 중' : '전체 준비중'}
+        </button>
         <button
           type="button"
           disabled={disabled}

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { basePath } from '@/lib/clientConfig';
 
 type BottomNavProps = {
   boothNo?: number;
@@ -13,6 +14,7 @@ export default function BottomNav({ token, hqMode }: BottomNavProps) {
   void token;
   void hqMode;
   const pathname = usePathname();
+  const currentPath = normalizePath(pathname);
   const statusHref = '/';
   const overviewHref = '/overview';
   const helpHref = '/help';
@@ -21,10 +23,10 @@ export default function BottomNav({ token, hqMode }: BottomNavProps) {
     {
       label: '상황',
       href: statusHref,
-      active: pathname === '/' || pathname === '/hq' || pathname === '/map' || pathname.startsWith('/booth')
+      active: currentPath === '/' || currentPath === '/hq' || currentPath === '/map' || currentPath.startsWith('/booth')
     },
-    { label: '전체상황', href: overviewHref, active: pathname === '/overview' },
-    { label: '도움', href: helpHref, active: pathname === '/help' }
+    { label: '전체상황', href: overviewHref, active: currentPath === '/overview' },
+    { label: '도움', href: helpHref, active: currentPath === '/help' }
   ];
 
   return (
@@ -46,4 +48,12 @@ export default function BottomNav({ token, hqMode }: BottomNavProps) {
       </div>
     </nav>
   );
+}
+
+function normalizePath(pathname: string) {
+  let path = pathname || '/';
+  if (basePath && path === basePath) path = '/';
+  if (basePath && path.startsWith(`${basePath}/`)) path = path.slice(basePath.length);
+  if (!path.startsWith('/')) path = `/${path}`;
+  return path === '/' ? path : path.replace(/\/+$/, '');
 }

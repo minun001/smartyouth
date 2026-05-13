@@ -321,6 +321,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
     const handlePointerUp = (event: PointerEvent) => finishDrag(event.clientX, event.clientY);
     const handlePointerCancel = () => {
       setDraggingId(null);
+      setDragPreview(null);
       setIsOverCompleteZone(false);
     };
     const handleTouchMove = (event: TouchEvent) => {
@@ -348,6 +349,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
     window.addEventListener('pointercancel', handlePointerCancel);
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('touchcancel', handlePointerCancel);
 
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
@@ -355,6 +357,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
       window.removeEventListener('pointercancel', handlePointerCancel);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handlePointerCancel);
     };
   }, [draggingId]);
 
@@ -539,7 +542,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
               )}
             </section>
 
-            {canManageHelp ? (
+            {canManageHelp && draggingId ? (
               <div
                 data-help-complete-zone="true"
                 ref={completeZoneRef}

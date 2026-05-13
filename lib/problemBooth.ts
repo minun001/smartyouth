@@ -1,5 +1,5 @@
 import type { BoothStatus } from './types';
-import { congestionStatusLabel, operationStatusLabels } from './statusLabels';
+import { congestionStatusLabel, materialStatusLabels, operationStatusLabels } from './statusLabels';
 
 const THIRTY_MINUTES = 30 * 60 * 1000;
 
@@ -12,6 +12,10 @@ export function getProblemReasons(status: BoothStatus, now = new Date(), eventAc
 
   if (status.operationStatus === 'PAUSED') {
     reasons.push(operationStatusLabels.PAUSED);
+  }
+
+  if (status.materialStatus === 'LOW' || status.materialStatus === 'OUT') {
+    reasons.push(materialStatusLabels[status.materialStatus]);
   }
 
   if (status.helpRequested) {

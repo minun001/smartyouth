@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiPath, appPath, isStaticDemo } from '@/lib/clientConfig';
 import { getHelpQueueHref } from '@/lib/helpNavigation';
 import { REALTIME_FALLBACK_REFRESH_INTERVAL_MS } from '@/lib/realtimeConfig';
@@ -22,30 +22,13 @@ export default function GlobalHelpNotifier() {
   const initializedRef = useRef(false);
   const knownIncidentIdsRef = useRef<Set<string>>(new Set());
 
-  const currentRoute = useMemo(() => {
-    if (typeof window === 'undefined') return { pathname: '', token: null };
-    return {
-      pathname: window.location.pathname,
-      token: new URLSearchParams(window.location.search).get('t')
-    };
-  }, []);
-  const currentToken = currentRoute.token;
-
-  const helpHref = useMemo(() => {
-    return getHelpQueueHref({
-      pathname: currentRoute.pathname,
-      staticDemo: isStaticDemo,
-      token: currentToken
-    });
-  }, [currentRoute.pathname, currentToken]);
+  const helpHref = getHelpQueueHref({ pathname: '', staticDemo: isStaticDemo });
 
   const loadStatus = useCallback(async (): Promise<ClientStatusResponse | null> => {
-    if (isStaticDemo) return getStaticStatus(currentToken);
+    if (isStaticDemo) return getStaticStatus();
 
     try {
-      const params = new URLSearchParams();
-      if (currentToken) params.set('t', currentToken);
-      const response = await fetch(`${apiPath('/api/status')}${params.toString() ? `?${params.toString()}` : ''}`, {
+      const response = await fetch(apiPath('/api/status'), {
         cache: 'no-store'
       });
       if (!response.ok) return null;
@@ -53,7 +36,7 @@ export default function GlobalHelpNotifier() {
     } catch {
       return null;
     }
-  }, [currentToken]);
+  }, []);
 
   const notify = useCallback((nextNotice: HelpNotice) => {
     setNotice(nextNotice);

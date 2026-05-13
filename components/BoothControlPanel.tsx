@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { apiPath, isStaticDemo } from '@/lib/clientConfig';
-import { patchStaticStatus } from '@/lib/staticDemoClient';
+import { createStaticHelp, patchStaticStatus } from '@/lib/staticDemoClient';
 import { formatTime } from '@/lib/statusLabels';
-import type { BoothStatus, BoothWithStatus, StatusPatch } from '@/lib/types';
+import type { BoothStatus, BoothWithStatus, HelpType, StatusPatch } from '@/lib/types';
 import CongestionSlider from './CongestionSlider';
+import HelpRequestButtons from './HelpRequestButtons';
+import MaterialButtons from './MaterialButtons';
 import StatusSegmentedControl from './StatusSegmentedControl';
+import WaitTimeButtons from './WaitTimeButtons';
 
 type BoothControlPanelProps = {
   booth: BoothWithStatus;
@@ -30,11 +33,13 @@ export default function BoothControlPanel({
   onSaved
 }: BoothControlPanelProps) {
   const [status, setStatus] = useState(booth.status);
+  const [memoDraft, setMemoDraft] = useState(booth.status.memo ?? '');
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [savedAt, setSavedAt] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     setStatus(booth.status);
+    setMemoDraft(booth.status.memo ?? '');
   }, [booth.boothNo, booth.status.updatedAt]);
 
   const tokenQuery = token ? `?t=${encodeURIComponent(token)}` : '';
@@ -85,6 +90,45 @@ export default function BoothControlPanel({
     onSaved?.();
   }
 
+  async function requestHelp(type: HelpType) {
+    if (!canEdit) return;
+
+    const previous = status;
+    const optimistic: BoothStatus = {
+      ...status,
+      helpRequested: true,
+      helpType: type,
+      memo: memoDraft.trim() || status.memo,
+      updatedAt: new Date().toISOString()
+    };
+    setStatus(optimistic);
+    onUpdated?.(optimistic);
+    setSaveState('saving');
+
+    try {
+      if (isStaticDemo) {
+        const result = await createStaticHelp(booth.boothNo, token, type, memoDraft);
+        setSavedAt(result.savedAt);
+      } else {
+        const response = await fetch(`${apiPath(`/api/booths/${booth.boothNo}/help`)}${tokenQuery}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type, memo: memoDraft })
+        });
+        if (!response.ok) throw new Error('Help request failed.');
+        const result = (await response.json()) as { savedAt: string };
+        setSavedAt(result.savedAt);
+      }
+
+      setSaveState('saved');
+      onSaved?.();
+    } catch {
+      setStatus(previous);
+      onUpdated?.(previous);
+      setSaveState('error');
+    }
+  }
+
   const saveStatusClass =
     saveState === 'error'
       ? 'bg-red-500 text-white'
@@ -116,6 +160,51 @@ export default function BoothControlPanel({
           disabled={!canEdit}
           onChange={(congestionLevel) => void patchStatus({ congestionLevel })}
         />
+      </ControlBlock>
+
+      <ControlBlock title="대기시간">
+        <WaitTimeButtons
+          value={status.waitMinutes}
+          disabled={!canEdit}
+          onChange={(waitMinutes) => void patchStatus({ waitMinutes })}
+        />
+      </ControlBlock>
+
+      <ControlBlock title="재료 상태">
+        <MaterialButtons
+          value={status.materialStatus}
+          disabled={!canEdit}
+          onChange={(materialStatus) => void patchStatus({ materialStatus })}
+        />
+      </ControlBlock>
+
+      <ControlBlock title="도움 요청">
+        <HelpRequestButtons
+          activeType={status.helpRequested ? status.helpType : undefined}
+          disabled={!canEdit}
+          onRequest={(helpType) => void requestHelp(helpType)}
+        />
+      </ControlBlock>
+
+      <ControlBlock title="메모">
+        <div className="space-y-2">
+          <textarea
+            value={memoDraft}
+            disabled={!canEdit}
+            onChange={(event) => setMemoDraft(event.target.value)}
+            placeholder="현장 상황을 짧게 적어주세요."
+            rows={3}
+            className="w-full rounded-lg border border-slate-200 bg-white p-3 text-base font-bold text-slate-900 outline-none focus:border-[var(--asan-blue)] disabled:cursor-not-allowed disabled:opacity-60"
+          />
+          <button
+            type="button"
+            disabled={!canEdit || memoDraft.trim() === (status.memo ?? '').trim()}
+            onClick={() => void patchStatus({ memo: memoDraft })}
+            className="min-h-12 w-full rounded-lg bg-slate-900 px-4 text-base font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            메모 저장
+          </button>
+        </div>
       </ControlBlock>
     </div>
   );
