@@ -44,17 +44,17 @@ export const congestionLabels: Record<CongestionLevel, string> = {
 };
 
 export const congestionColors: Record<CongestionLevel, string> = {
-  0: situationColors.normal,
-  1: situationColors.normal,
-  2: situationColors.normal,
+  0: situationColors.open,
+  1: situationColors.open,
+  2: situationColors.open,
   3: situationColors.attention,
   4: situationColors.attention
 };
 
 export const congestionSoftColors: Record<CongestionLevel, string> = {
-  0: '#eff6ff',
-  1: '#eff6ff',
-  2: '#eff6ff',
+  0: '#f0fdf4',
+  1: '#f0fdf4',
+  2: '#f0fdf4',
   3: '#fff7ed',
   4: '#fff7ed'
 };
@@ -70,11 +70,11 @@ export function congestionStatusLabel(level: CongestionLevel) {
 }
 
 export function congestionStatusColor(level: CongestionLevel) {
-  return isCongestedLevel(level) ? situationColors.attention : situationColors.normal;
+  return isCongestedLevel(level) ? situationColors.attention : situationColors.open;
 }
 
 export function congestionStatusSoftColor(level: CongestionLevel) {
-  return isCongestedLevel(level) ? '#fff7ed' : '#eff6ff';
+  return isCongestedLevel(level) ? '#fff7ed' : '#f0fdf4';
 }
 
 export function situationStatusColor(operationStatus: OperationStatus, congestionLevel: CongestionLevel) {

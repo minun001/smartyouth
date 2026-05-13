@@ -23,8 +23,8 @@ describe('situation status colors', () => {
   });
 
   it('uses the same binary colors for congestion labels', () => {
-    expect(congestionStatusColor(0)).toBe(situationColors.normal);
-    expect(congestionStatusColor(2)).toBe(situationColors.normal);
+    expect(congestionStatusColor(0)).toBe(situationColors.open);
+    expect(congestionStatusColor(2)).toBe(situationColors.open);
     expect(congestionStatusColor(3)).toBe(situationColors.attention);
     expect(congestionStatusColor(4)).toBe(situationColors.attention);
   });
