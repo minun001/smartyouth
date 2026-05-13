@@ -368,7 +368,14 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
   return (
     <div className="min-h-screen text-slate-950">
-      <AppHeader title="도움 요청 처리" lastRefresh={data?.refreshedAt} onRefresh={() => void loadStatus()} />
+      <AppHeader
+        title="도움 요청 처리"
+        lastRefresh={data?.refreshedAt}
+        onRefresh={() => void loadStatus()}
+        onResetAll={canManageHelp ? () => void resetAllHelp() : undefined}
+        resetDisabled={!canManageHelp || resetSaving || activeCount + resolvedCount === 0}
+        resetLoading={resetSaving}
+      />
       <main className="safe-bottom mx-auto max-w-6xl space-y-4 px-4 py-4 sm:py-5">
         <section className="rounded-lg bg-gradient-to-br from-[var(--asan-blue)] via-[var(--asan-sky)] to-[var(--asan-green)] p-5 text-white shadow-[0_24px_60px_rgba(0,96,176,0.22)]">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
