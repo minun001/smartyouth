@@ -127,7 +127,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
   async function submitHelpRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!data?.access.hq || requestSaving) return;
+    if (!data || requestSaving) return;
 
     const boothNo = Number(requestBoothNo);
     const memo = requestMemo.trim();
@@ -360,6 +360,8 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
 
   const activeCount = activeIncidents.length;
   const resolvedCount = resolvedIncidents.length;
+  const canSubmitHelp = Boolean(data);
+  const canManageHelp = Boolean(data?.access.hq);
 
   return (
     <div className="min-h-screen text-slate-950">
@@ -381,9 +383,9 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
           </div>
         </section>
 
-        {data && !data.access.hq ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-black text-red-700">
-            HQ 수정 권한이 없는 링크입니다. HQ 토큰을 확인해주세요.
+        {data && !canManageHelp ? (
+          <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm font-black text-[var(--brand-strong)]">
+            공개 도움 요청 모드입니다. 요청 등록은 가능하고, 완료 처리와 초기화는 운영본부 링크에서만 가능합니다.
           </div>
         ) : null}
 
@@ -400,7 +402,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
               helpType={requestType}
               memo={requestMemo}
               selectedBoothName={selectedRequestBoothName}
-              canSubmit={data.access.hq}
+              canSubmit={canSubmitHelp}
               saving={requestSaving}
               savedMessage={requestSavedMessage}
               onBoothNoChange={setRequestBoothNo}
@@ -410,7 +412,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
             />
 
             <HelpResetPanel
-              canReset={data.access.hq}
+              canReset={canManageHelp}
               activeCount={activeCount}
               resolvedCount={resolvedCount}
               saving={resetSaving}
@@ -429,7 +431,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                   {activeIncidents.map((incident) => {
                     const isDragging = draggingId === incident.id;
                     const isCompleting = completingId === incident.id;
-                    const canHandle = data.access.hq && savingId !== incident.id;
+                    const canHandle = canManageHelp && savingId !== incident.id;
 
                     return (
                       <article
@@ -476,48 +478,56 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
                           <span>요청 {formatTime(incident.createdAt)}</span>
                         </div>
 
-                        <div
-                          data-help-drag-handle={incident.id}
-                          role="button"
-                          tabIndex={canHandle ? 0 : -1}
-                          aria-label={`부스 ${incident.boothNo} 도움 요청 완료 처리`}
-                          onPointerDown={(event) => startDrag(event, incident)}
-                          onKeyDown={(event) => {
-                            if (canHandle && (event.key === 'Enter' || event.key === ' ')) {
-                              event.preventDefault();
-                              void setIncidentStatus(incident.id, 'RESOLVED');
-                            }
-                          }}
-                          className={`mt-4 flex min-h-14 touch-none select-none items-center justify-between rounded-lg border-2 border-dashed px-4 text-base font-black transition ${
-                            canHandle
-                              ? 'cursor-grab border-[var(--asan-blue)] bg-sky-50 text-[var(--brand-strong)] active:cursor-grabbing'
-                              : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
-                          }`}
-                        >
-                          <span>
-                            {savingId === incident.id ? '처리 중' : isDragging && isOverCompleteZone ? '놓으면 완료' : '끌고 놓기'}
-                          </span>
-                          <span className="rounded-md bg-white px-3 py-1 text-sm">완료</span>
-                        </div>
+                        {canManageHelp ? (
+                          <>
+                            <div
+                              data-help-drag-handle={incident.id}
+                              role="button"
+                              tabIndex={canHandle ? 0 : -1}
+                              aria-label={`부스 ${incident.boothNo} 도움 요청 완료 처리`}
+                              onPointerDown={(event) => startDrag(event, incident)}
+                              onKeyDown={(event) => {
+                                if (canHandle && (event.key === 'Enter' || event.key === ' ')) {
+                                  event.preventDefault();
+                                  void setIncidentStatus(incident.id, 'RESOLVED');
+                                }
+                              }}
+                              className="mt-4 flex min-h-14 touch-none select-none items-center justify-between rounded-lg border-2 border-dashed border-[var(--asan-blue)] bg-sky-50 px-4 text-base font-black text-[var(--brand-strong)] transition active:cursor-grabbing"
+                            >
+                              <span>
+                                {savingId === incident.id
+                                  ? '처리 중'
+                                  : isDragging && isOverCompleteZone
+                                    ? '놓으면 완료'
+                                    : '끌고 놓기'}
+                              </span>
+                              <span className="rounded-md bg-white px-3 py-1 text-sm">완료</span>
+                            </div>
 
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            disabled={!data.access.hq || savingId === incident.id || incident.status === 'IN_PROGRESS'}
-                            onClick={() => void setIncidentStatus(incident.id, 'IN_PROGRESS')}
-                            className="min-h-12 rounded-lg border border-slate-200 bg-white text-base font-black text-slate-700 disabled:opacity-50"
-                          >
-                            처리 시작
-                          </button>
-                          <button
-                            type="button"
-                            disabled={!data.access.hq || savingId === incident.id}
-                            onClick={() => void setIncidentStatus(incident.id, 'RESOLVED')}
-                            className="min-h-12 rounded-lg bg-slate-900 text-base font-black text-white disabled:opacity-50"
-                          >
-                            완료 처리
-                          </button>
-                        </div>
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                disabled={savingId === incident.id || incident.status === 'IN_PROGRESS'}
+                                onClick={() => void setIncidentStatus(incident.id, 'IN_PROGRESS')}
+                                className="min-h-12 rounded-lg border border-slate-200 bg-white text-base font-black text-slate-700 disabled:opacity-50"
+                              >
+                                처리 시작
+                              </button>
+                              <button
+                                type="button"
+                                disabled={savingId === incident.id}
+                                onClick={() => void setIncidentStatus(incident.id, 'RESOLVED')}
+                                className="min-h-12 rounded-lg bg-slate-900 text-base font-black text-white disabled:opacity-50"
+                              >
+                                완료 처리
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm font-black text-slate-500">
+                            운영본부에서 확인 후 처리합니다.
+                          </div>
+                        )}
                       </article>
                     );
                   })}
@@ -529,20 +539,22 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
               )}
             </section>
 
-            <div
-              data-help-complete-zone="true"
-              ref={completeZoneRef}
-              className={`sticky bottom-[calc(env(safe-area-inset-bottom)+var(--bottom-nav-height)+8px)] z-30 rounded-lg border-2 border-dashed p-4 text-center shadow-[0_18px_48px_rgba(15,23,42,0.18)] transition ${
-                isOverCompleteZone
-                  ? 'help-complete-zone-active border-emerald-500 bg-emerald-500 text-white'
-                  : draggingId
-                    ? 'border-[var(--asan-blue)] bg-white text-[var(--brand-strong)]'
-                    : 'border-slate-300 bg-white text-slate-700'
-              }`}
-            >
-              <div className="text-lg font-black">{isOverCompleteZone ? '놓으면 완료' : '완료 영역'}</div>
-              <div className="mt-1 text-xs font-bold opacity-80">요청 카드를 아래로 끌어 옮기기</div>
-            </div>
+            {canManageHelp ? (
+              <div
+                data-help-complete-zone="true"
+                ref={completeZoneRef}
+                className={`sticky bottom-[calc(env(safe-area-inset-bottom)+var(--bottom-nav-height)+8px)] z-30 rounded-lg border-2 border-dashed p-4 text-center shadow-[0_18px_48px_rgba(15,23,42,0.18)] transition ${
+                  isOverCompleteZone
+                    ? 'help-complete-zone-active border-emerald-500 bg-emerald-500 text-white'
+                    : draggingId
+                      ? 'border-[var(--asan-blue)] bg-white text-[var(--brand-strong)]'
+                      : 'border-slate-300 bg-white text-slate-700'
+                }`}
+              >
+                <div className="text-lg font-black">{isOverCompleteZone ? '놓으면 완료' : '완료 영역'}</div>
+                <div className="mt-1 text-xs font-bold opacity-80">요청 카드를 아래로 끌어 옮기기</div>
+              </div>
+            ) : null}
 
             <section className="space-y-3 rounded-lg border border-[var(--line)] bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between gap-3">
@@ -593,7 +605,7 @@ export default function HelpPageClient({ token }: HelpPageClientProps) {
         ) : null}
       </main>
       {dragPreview ? <HelpDragPreview preview={dragPreview} isOverCompleteZone={isOverCompleteZone} /> : null}
-      <BottomNav token={token} hqMode={data?.access.hq ?? false} />
+      <BottomNav token={token} hqMode={canManageHelp} />
     </div>
   );
 }
@@ -683,6 +695,9 @@ function HelpResetPanel({
           >
             {saving ? '초기화 중' : '전체 도움 요청 초기화'}
           </button>
+          {!canReset ? (
+            <div className="text-center text-xs font-bold text-slate-500">초기화는 운영본부 링크에서만 가능합니다.</div>
+          ) : null}
         </div>
       </div>
     </section>
@@ -787,7 +802,7 @@ function HelpRequestForm({
 
         {!canSubmit ? (
           <div className="rounded-md bg-red-50 px-3 py-2 text-sm font-black text-red-700">
-            HQ 권한 링크에서만 도움 요청을 등록하고 완료 처리할 수 있습니다.
+            도움 요청 정보를 불러오면 등록할 수 있습니다.
           </div>
         ) : null}
 

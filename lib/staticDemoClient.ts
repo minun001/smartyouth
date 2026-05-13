@@ -283,15 +283,35 @@ export async function createStaticHelp(
   options?: { forceCreate?: boolean }
 ) {
   const access = canWrite(token, boothNo);
-  if (!access.canEditBooth) throw new Error('수정 권한 없음');
-
-  const statusResult = await patchStaticStatus(boothNo, token, {
+  const state = readState();
+  const now = new Date().toISOString();
+  const statusIndex = state.statuses.findIndex((status) => status.boothNo === boothNo);
+  const current = statusIndex >= 0 ? state.statuses[statusIndex] : createInitialStatus(boothNo, now);
+  const next: BoothStatus = {
+    ...current,
     helpRequested: true,
     helpType: type,
-    memo
-  });
-  const state = readState();
-  const now = statusResult.savedAt;
+    memo: memo?.trim() || undefined,
+    updatedAt: now
+  };
+  const patch: StatusPatch = { helpRequested: true, helpType: type, memo };
+  const source = access.canEditBooth ? (access.hq ? 'static-hq' : `static-booth:${boothNo}`) : 'static-public-help';
+  const logs = (Object.keys(patch) as (keyof StatusPatch)[])
+    .filter((field) => valueToString(current[field]) !== valueToString(next[field]))
+    .map((field) => ({
+      id: id(),
+      boothNo,
+      field,
+      oldValue: valueToString(current[field]),
+      newValue: valueToString(next[field]),
+      source,
+      createdAt: now
+    }));
+
+  if (statusIndex >= 0) state.statuses[statusIndex] = next;
+  else state.statuses.push(next);
+  state.logs.unshift(...logs);
+
   const existing = options?.forceCreate
     ? undefined
     : state.incidents.find(

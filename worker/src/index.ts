@@ -489,12 +489,14 @@ async function routeApi(request: Request, env: Env) {
   if (request.method === 'POST' && helpMatch) {
     const boothNo = Number(helpMatch[1]);
     const access = await getWriteAccess(request, env, boothNo);
-    if (!access.canWrite) return json(request, env, { error: '수정 권한 없음' }, { status: 403 });
+    const booth = seedBooths.find((item) => item.boothNo === boothNo);
+    if (!booth) return json(request, env, { error: 'Booth not found.' }, { status: 404 });
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const type = body.type as HelpType;
     if (!helpTypes.includes(type)) return json(request, env, { error: 'Invalid help type.' }, { status: 400 });
     const memo = typeof body.memo === 'string' ? body.memo.slice(0, 300).trim() : '';
-    await updateBoothStatus(env, boothNo, { helpRequested: true, helpType: type, memo }, access.scope === 'hq' ? 'hq' : `booth:${boothNo}`);
+    const source = access.canWrite ? (access.scope === 'hq' ? 'hq' : `booth:${boothNo}`) : 'public-help';
+    await updateBoothStatus(env, boothNo, { helpRequested: true, helpType: type, memo }, source);
 
     const now = toDbTime();
     const existing = await env.DB.prepare(

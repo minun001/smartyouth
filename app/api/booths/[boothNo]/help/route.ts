@@ -16,9 +16,6 @@ export async function POST(request: Request, context: { params: Promise<{ boothN
     }
 
     const access = getWriteAccess(getRequestToken(request), boothNo);
-    if (!access.canWrite) {
-      return NextResponse.json({ error: '수정 권한 없음' }, { status: 403 });
-    }
 
     const booth = await getBoothWithStatus(boothNo);
     if (!booth) {
@@ -36,7 +33,7 @@ export async function POST(request: Request, context: { params: Promise<{ boothN
       boothNo,
       type,
       memo,
-      access.scope === 'hq' ? 'hq' : `booth:${boothNo}`
+      access.canWrite ? (access.scope === 'hq' ? 'hq' : `booth:${boothNo}`) : 'public-help'
     );
     return NextResponse.json({ incident, savedAt: new Date().toISOString() });
   } catch (error) {

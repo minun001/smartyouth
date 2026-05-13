@@ -65,4 +65,17 @@ describe('static demo operation reset', () => {
     expect(reset.incidents).toHaveLength(0);
     expect(reset.recentChanges).toHaveLength(0);
   });
+
+  it('allows public demo help requests without edit tokens', async () => {
+    const result = await createStaticHelp(2, undefined, 'MATERIAL', '재료가 부족합니다');
+    const status = getStaticStatus();
+    const booth = status.booths.find((item) => item.boothNo === 2);
+
+    expect(result.incident.status).toBe('NEW');
+    expect(status.incidents).toHaveLength(1);
+    expect(status.access.hq).toBe(false);
+    expect(status.recentChanges).toHaveLength(0);
+    expect(booth?.status.helpRequested).toBe(true);
+    expect(booth?.status.helpType).toBe('MATERIAL');
+  });
 });
