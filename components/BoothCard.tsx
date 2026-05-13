@@ -18,15 +18,33 @@ type BoothCardProps = {
   booth: BoothWithStatus;
   editable?: boolean;
   defaultExpanded?: boolean;
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
   onEdit?: (booth: BoothWithStatus) => void;
   children?: ReactNode;
 };
 
-export default function BoothCard({ booth, editable, defaultExpanded = false, onEdit, children }: BoothCardProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
+export default function BoothCard({
+  booth,
+  editable,
+  defaultExpanded = false,
+  expanded: controlledExpanded,
+  onExpandedChange,
+  onEdit,
+  children
+}: BoothCardProps) {
+  const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
+  const expanded = controlledExpanded ?? internalExpanded;
   const status = booth.status;
   const priorityColor = situationStatusColor(status.operationStatus, status.congestionLevel);
   const longWait = isLongWaitMinutes(status.waitMinutes);
+
+  function setExpanded(nextExpanded: boolean) {
+    if (controlledExpanded === undefined) {
+      setInternalExpanded(nextExpanded);
+    }
+    onExpandedChange?.(nextExpanded);
+  }
 
   return (
     <article
@@ -37,13 +55,12 @@ export default function BoothCard({ booth, editable, defaultExpanded = false, on
         type="button"
         aria-expanded={expanded}
         onClick={() => {
-          if (editable && onEdit) {
-            setExpanded(true);
-            onEdit(booth);
-            return;
-          }
+          const nextExpanded = !expanded;
+          setExpanded(nextExpanded);
 
-          setExpanded((current) => !current);
+          if (nextExpanded && editable && onEdit) {
+            onEdit(booth);
+          }
         }}
         className="relative flex min-h-20 w-full items-center justify-between gap-3 p-4 text-left active:bg-slate-50"
       >

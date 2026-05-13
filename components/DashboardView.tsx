@@ -32,6 +32,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
   );
   const [filter, setFilter] = useState<DashboardFilter>('all');
   const [selectedBoothNo, setSelectedBoothNo] = useState<number | null>(null);
+  const [expandedBoothNo, setExpandedBoothNo] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!isStaticDemo);
   const [bulkSaving, setBulkSaving] = useState<OperationStatus | null>(null);
@@ -81,7 +82,6 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
 
   const canEdit = Boolean(data?.access.hq);
   const selectedBooth = data?.booths.find((booth) => booth.boothNo === selectedBoothNo);
-  const statusAttentionBooths = useMemo(() => data?.booths.filter((booth) => booth.problem) ?? [], [data]);
   const openCount = useMemo(() => data?.booths.filter((booth) => booth.status.operationStatus === 'OPEN').length ?? 0, [data]);
   const congestedCount = useMemo(
     () => data?.booths.filter((booth) => booth.status.congestionLevel >= 3).length ?? 0,
@@ -181,6 +181,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
         setData(getStaticStatus(token));
         setFilter('all');
         setSelectedBoothNo(null);
+        setExpandedBoothNo(null);
         setBulkSavedMessage(`전체 초기화됨 · ${result.boothCount}개 부스 · ${formatTime(result.resetAt)}`);
         return;
       }
@@ -198,6 +199,7 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
       await loadStatus();
       setFilter('all');
       setSelectedBoothNo(null);
+      setExpandedBoothNo(null);
       setBulkSavedMessage(`전체 초기화됨 · ${result.boothCount ?? data?.booths.length ?? 0}개 부스 · ${formatTime(result.resetAt)}`);
     } catch {
       setError('전체 초기화에 실패했습니다. 다시 시도해주세요.');
@@ -313,71 +315,42 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
                 onReset={() => void resetAllOperations()}
               />
 
-              {statusAttentionBooths.length > 0 ? (
-                <section className="rounded-lg border border-orange-200 bg-orange-50 p-4 shadow-sm">
-                  <SectionHeader title="상태 확인" count={statusAttentionBooths.length} tone="danger" />
-                  <div className="mt-3 grid gap-3 lg:grid-cols-2 2xl:grid-cols-4">
-                    {statusAttentionBooths.slice(0, 4).map((booth) => (
-                      <BoothCard
-                        key={booth.boothNo}
-                        booth={booth}
-                        editable={canEdit}
-                        defaultExpanded={statusAttentionBooths.length <= 2}
-                        onEdit={(selected) => setSelectedBoothNo(selected.boothNo)}
-                      >
-                        {selectedBoothNo === booth.boothNo && canEdit ? (
-                          <BoothControlPanel
-                            booth={booth}
-                            token={token}
-                            canEdit={canEdit}
-                            variant="inline"
-                            onClose={() => setSelectedBoothNo(null)}
-                            onUpdated={applyLocalStatus}
-                            onSaved={() => void loadStatus()}
-                          />
-                        ) : null}
-                      </BoothCard>
-                    ))}
-                  </div>
-                </section>
-              ) : (
-                <section className="rounded-lg border border-sky-200 bg-sky-50 p-4 shadow-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-lg font-black text-[var(--brand-strong)]">현재 즉시 대응 부스 없음</h2>
-                      <p className="mt-1 text-sm font-bold text-sky-800">
-                        운영상태와 혼잡도를 계속 감시 중입니다.
-                      </p>
-                    </div>
-                    <span className="rounded-md bg-[var(--asan-green)] px-3 py-2 text-sm font-black text-white">
-                      정상
-                    </span>
-                  </div>
-                </section>
-              )}
-
               <section className="space-y-3">
                 <SectionHeader title="전체 부스" count={visibleBooths.length} />
-                <FilterChips active={filter} onChange={setFilter} />
+                <FilterChips
+                  active={filter}
+                  onChange={(nextFilter) => {
+                    setFilter(nextFilter);
+                    setExpandedBoothNo(null);
+                    setSelectedBoothNo(null);
+                  }}
+                />
               </section>
 
               <section className="space-y-3">
                 {visibleBooths.length > 0 ? (
-                  <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3 min-[1900px]:grid-cols-4">
+                  <div className="grid gap-3">
                     {visibleBooths.map((booth) => (
                       <BoothCard
                         key={booth.boothNo}
                         booth={booth}
                         editable={canEdit}
-                        onEdit={(selected) => setSelectedBoothNo(selected.boothNo)}
+                        expanded={expandedBoothNo === booth.boothNo}
+                        onExpandedChange={(nextExpanded) => {
+                          setExpandedBoothNo(nextExpanded ? booth.boothNo : null);
+                          setSelectedBoothNo(nextExpanded && canEdit ? booth.boothNo : null);
+                        }}
                       >
-                        {selectedBoothNo === booth.boothNo && canEdit ? (
+                        {expandedBoothNo === booth.boothNo && selectedBoothNo === booth.boothNo && canEdit ? (
                           <BoothControlPanel
                             booth={booth}
                             token={token}
                             canEdit={canEdit}
                             variant="inline"
-                            onClose={() => setSelectedBoothNo(null)}
+                            onClose={() => {
+                              setSelectedBoothNo(null);
+                              setExpandedBoothNo(null);
+                            }}
                             onUpdated={applyLocalStatus}
                             onSaved={() => void loadStatus()}
                           />
@@ -593,7 +566,7 @@ function CommandBrief({
   lastRefresh?: string;
 }) {
   const attentionText =
-    congestedCount > 0 ? `혼잡 ${congestedCount}개 확인` : openCount > 0 ? `운영중 ${openCount}개` : '운영 상태 확인';
+    congestedCount > 0 ? `혼잡 ${congestedCount}개 확인` : openCount > 0 ? `운영중 ${openCount}개` : '운영 준비중';
 
   return (
     <section className="overflow-hidden rounded-lg bg-gradient-to-br from-[var(--asan-blue)] via-[var(--asan-sky)] to-[var(--asan-green)] text-white shadow-[0_24px_60px_rgba(0,96,176,0.22)]">
