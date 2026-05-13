@@ -264,30 +264,36 @@ export default function DashboardView({ mode, token, view = 'map' }: DashboardVi
         {data && !(mode === 'hq' && !data.access.hq) ? (
           isMapView ? (
             <>
-              <MapView
-                booths={data.booths}
-                editable={canEdit}
-                fullScreen
-                showProblemList={false}
-                bulkControls={
-                  <MapBulkOperationControls
-                    canEdit={canEdit}
-                    saving={bulkSaving}
-                    disabled={bulkControlsDisabled}
-                    onChange={(operationStatus) => void confirmAndPatchAllOperationStatus(operationStatus)}
-                  />
-                }
-                onEdit={(selected) => setSelectedBoothNo(selected.boothNo)}
-              />
-              {selectedBooth && canEdit ? (
-                <BoothControlPanel
-                  booth={selectedBooth}
-                  token={token}
-                  canEdit={canEdit}
-                  onClose={() => setSelectedBoothNo(null)}
-                  onUpdated={applyLocalStatus}
-                  onSaved={() => void loadStatus()}
+              <div className={`${selectedBooth && canEdit ? 'hidden lg:flex' : 'flex'} min-w-0 flex-1`}>
+                <MapView
+                  booths={data.booths}
+                  editable={canEdit}
+                  fullScreen
+                  showProblemList={false}
+                  bulkControls={
+                    <MapBulkOperationControls
+                      canEdit={canEdit}
+                      saving={bulkSaving}
+                      disabled={bulkControlsDisabled}
+                      onChange={(operationStatus) => void confirmAndPatchAllOperationStatus(operationStatus)}
+                    />
+                  }
+                  onEdit={(selected) => setSelectedBoothNo(selected.boothNo)}
                 />
+              </div>
+              {selectedBooth && canEdit ? (
+                <div className="min-h-0 flex-1 overflow-y-auto bg-slate-100 p-3 lg:w-[420px] lg:flex-none lg:border-l lg:border-[var(--line)] lg:p-4 xl:w-[460px]">
+                  <div className="mx-auto w-full max-w-xl lg:max-w-none">
+                    <BoothControlPanel
+                      booth={selectedBooth}
+                      token={token}
+                      canEdit={canEdit}
+                      onClose={() => setSelectedBoothNo(null)}
+                      onUpdated={applyLocalStatus}
+                      onSaved={() => void loadStatus()}
+                    />
+                  </div>
+                </div>
               ) : null}
             </>
           ) : (
